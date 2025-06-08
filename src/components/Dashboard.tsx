@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun } from 'lucide-react';
+import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun, Undo2, Download } from 'lucide-react';
 import { TransactionModal } from './TransactionModal';
 import { FinancialStatementsModal } from './FinancialStatementsModal';
+import { CreateProductModal } from './CreateProductModal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface InventoryItem {
@@ -13,13 +13,16 @@ interface InventoryItem {
   quantity: number;
   unitCost: number;
   totalValue: number;
+  type: 'bottles' | 'oil' | 'box' | 'other';
+  milliliters?: number;
+  grams?: number;
 }
 
 interface Transaction {
   id: string;
   date: string;
   description: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal';
+  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create';
   amount: number;
   debit: string;
   credit: string;
@@ -28,23 +31,29 @@ interface Transaction {
 export const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [cash, setCash] = useState(0);
-  const [inventory, setInventory] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      name: 'Titan Oil Bottles',
-      quantity: 10,
-      unitCost: 135,
-      totalValue: 1350
-    }
-  ]);
+  const [totalSales, setTotalSales] = useState(0);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<{transactions: Transaction[], cash: number, inventory: InventoryItem[], totalSales: number}[]>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
   const [transactionType, setTransactionType] = useState<'purchase' | 'sale' | 'expense' | 'withdrawal'>('purchase');
 
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
 
+  const saveCurrentState = () => {
+    setTransactionHistory(prev => [...prev, {
+      transactions: [...transactions],
+      cash,
+      inventory: [...inventory],
+      totalSales
+    }]);
+  };
+
   const handleTransaction = (transactionData: any) => {
+    saveCurrentState();
+    
     const newTransaction: Transaction = {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString(),
@@ -57,9 +66,46 @@ export const Dashboard = () => {
     if (transactionData.type === 'purchase') {
       setCash(prev => prev - transactionData.amount);
       // Update inventory logic here
+      const existingItemIndex = inventory.findIndex(item => 
+        item.name === transactionData.productName && item.type === transactionData.productType
+      );
+      
+      if (existingItemIndex >= 0) {
+        const updatedInventory = [...inventory];
+        const existingItem = updatedInventory[existingItemIndex];
+        const newTotalQuantity = existingItem.quantity + transactionData.quantity;
+        const newTotalValue = existingItem.totalValue + transactionData.amount;
+        updatedInventory[existingItemIndex] = {
+          ...existingItem,
+          quantity: newTotalQuantity,
+          unitCost: newTotalValue / newTotalQuantity,
+          totalValue: newTotalValue
+        };
+        setInventory(updatedInventory);
+      } else {
+        const newItem: InventoryItem = {
+          id: Date.now().toString(),
+          name: transactionData.productName,
+          quantity: transactionData.quantity,
+          unitCost: transactionData.amount / transactionData.quantity,
+          totalValue: transactionData.amount,
+          type: transactionData.productType,
+          milliliters: transactionData.milliliters,
+          grams: transactionData.grams
+        };
+        setInventory([...inventory, newItem]);
+      }
     } else if (transactionData.type === 'sale') {
       setCash(prev => prev + transactionData.amount);
+      setTotalSales(prev => prev + transactionData.amount);
       // Update inventory logic here
+      const itemIndex = inventory.findIndex(item => item.name === transactionData.productName);
+      if (itemIndex >= 0) {
+        const updatedInventory = [...inventory];
+        updatedInventory[itemIndex].quantity -= transactionData.quantity;
+        updatedInventory[itemIndex].totalValue = updatedInventory[itemIndex].quantity * updatedInventory[itemIndex].unitCost;
+        setInventory(updatedInventory.filter(item => item.quantity > 0));
+      }
     } else if (transactionData.type === 'expense' || transactionData.type === 'withdrawal') {
       setCash(prev => prev - transactionData.amount);
     }
@@ -67,18 +113,88 @@ export const Dashboard = () => {
     setShowTransactionModal(false);
   };
 
+  const handleCreateProduct = (productData: any) => {
+    saveCurrentState();
+    
+    const newTransaction: Transaction = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString(),
+      type: 'create',
+      description: `Created ${productData.quantity} ${productData.name}`,
+      amount: 0,
+      debit: `Inventory ${productData.name}`,
+      credit: `Raw Materials`
+    };
+    
+    setTransactions([...transactions, newTransaction]);
+    
+    // Update inventory for created product
+    const newItem: InventoryItem = {
+      id: Date.now().toString(),
+      name: productData.name,
+      quantity: productData.quantity,
+      unitCost: 0, // Created products have no direct cost
+      totalValue: 0,
+      type: 'other'
+    };
+    setInventory([...inventory, newItem]);
+    
+    // Reduce raw materials from inventory
+    const updatedInventory = [...inventory];
+    if (productData.bottlesUsed > 0) {
+      const bottleIndex = updatedInventory.findIndex(item => item.type === 'bottles');
+      if (bottleIndex >= 0) {
+        updatedInventory[bottleIndex].quantity -= productData.bottlesUsed;
+        updatedInventory[bottleIndex].totalValue = updatedInventory[bottleIndex].quantity * updatedInventory[bottleIndex].unitCost;
+      }
+    }
+    if (productData.oilUsed > 0) {
+      const oilIndex = updatedInventory.findIndex(item => item.type === 'oil');
+      if (oilIndex >= 0) {
+        updatedInventory[oilIndex].grams = (updatedInventory[oilIndex].grams || 0) - productData.oilUsed;
+      }
+    }
+    setInventory(updatedInventory.filter(item => item.quantity > 0 && (item.grams === undefined || item.grams > 0)));
+    
+    setShowCreateModal(false);
+  };
+
+  const handleUndo = () => {
+    if (transactionHistory.length > 0) {
+      const lastState = transactionHistory[transactionHistory.length - 1];
+      setTransactions(lastState.transactions);
+      setCash(lastState.cash);
+      setInventory(lastState.inventory);
+      setTotalSales(lastState.totalSales);
+      setTransactionHistory(prev => prev.slice(0, -1));
+    }
+  };
+
   const handleClearData = () => {
     setCash(0);
-    setInventory([
-      {
-        id: '1',
-        name: 'Titan Oil Bottles',
-        quantity: 10,
-        unitCost: 135,
-        totalValue: 1350
-      }
-    ]);
+    setTotalSales(0);
+    setInventory([]);
     setTransactions([]);
+    setTransactionHistory([]);
+  };
+
+  const exportToExcel = () => {
+    // Create CSV content
+    let csvContent = "Date,Description,Type,Amount,Debit,Credit\n";
+    transactions.forEach(transaction => {
+      csvContent += `${transaction.date},"${transaction.description}",${transaction.type},${transaction.amount},"${transaction.debit}","${transaction.credit}"\n`;
+    });
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transactions.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   const toggleDarkMode = () => {
@@ -101,6 +217,25 @@ export const Dashboard = () => {
               <p className="text-slate-600 dark:text-slate-300">Track your inventory, cash flow, and transactions</p>
             </div>
             <div className="flex gap-3">
+              <Button
+                onClick={handleUndo}
+                disabled={transactionHistory.length === 0}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Undo2 className="h-4 w-4" />
+                Undo
+              </Button>
+              
+              <Button
+                onClick={exportToExcel}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="flex items-center gap-2">
@@ -137,7 +272,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Quick Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white dark:from-green-600 dark:to-green-700">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Cash Balance</CardTitle>
@@ -160,6 +295,17 @@ export const Dashboard = () => {
               </CardContent>
             </Card>
 
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white dark:from-orange-600 dark:to-orange-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+                <TrendingUp className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${totalSales.toLocaleString()}</div>
+                <p className="text-orange-100 text-xs">Cumulative sales</p>
+              </CardContent>
+            </Card>
+
             <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white dark:from-purple-600 dark:to-purple-700">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
@@ -173,7 +319,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <Button 
               onClick={() => { setTransactionType('purchase'); setShowTransactionModal(true); }}
               className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-semibold dark:bg-blue-700 dark:hover:bg-blue-800"
@@ -187,6 +333,13 @@ export const Dashboard = () => {
             >
               <DollarSign className="mr-2 h-5 w-5" />
               Sell
+            </Button>
+            <Button 
+              onClick={() => setShowCreateModal(true)}
+              className="h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold dark:bg-indigo-700 dark:hover:bg-indigo-800"
+            >
+              <Package className="mr-2 h-5 w-5" />
+              Create
             </Button>
             <Button 
               onClick={() => { setTransactionType('expense'); setShowTransactionModal(true); }}
@@ -280,6 +433,13 @@ export const Dashboard = () => {
           onClose={() => setShowTransactionModal(false)}
           onSubmit={handleTransaction}
           type={transactionType}
+          inventory={inventory}
+        />
+
+        <CreateProductModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateProduct}
           inventory={inventory}
         />
 

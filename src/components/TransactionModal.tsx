@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { X } from 'lucide-react';
 
 interface TransactionModalProps {
@@ -17,12 +18,17 @@ interface TransactionModalProps {
 
 export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }: TransactionModalProps) => {
   const [formData, setFormData] = useState({
-    product: '',
+    productType: '',
+    productName: '',
     quantity: '',
+    milliliters: '',
+    grams: '',
     price: '',
     description: '',
     amount: '',
-    paymentMethod: 'cash'
+    paymentMethod: 'cash',
+    isBoxed: false,
+    boxPrice: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,21 +38,32 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
     
     switch (type) {
       case 'purchase':
+        const totalAmount = parseFloat(formData.quantity) * parseFloat(formData.price);
         transactionData = {
           type: 'purchase',
-          description: `Purchased ${formData.quantity} ${formData.product}`,
-          amount: parseFloat(formData.quantity) * parseFloat(formData.price),
-          debit: `Inventory $${(parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2)}`,
-          credit: `Cash $${(parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2)}`
+          description: `Purchased ${formData.quantity} ${formData.productType} - ${formData.productName}`,
+          amount: totalAmount,
+          debit: `Inventory $${totalAmount.toFixed(2)}`,
+          credit: `Cash $${totalAmount.toFixed(2)}`,
+          productType: formData.productType,
+          productName: formData.productName,
+          quantity: parseFloat(formData.quantity),
+          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined,
+          grams: formData.grams ? parseFloat(formData.grams) : undefined
         };
         break;
       case 'sale':
+        const saleAmount = parseFloat(formData.quantity) * parseFloat(formData.price);
+        const boxAmount = formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0;
+        const totalSaleAmount = saleAmount + boxAmount;
         transactionData = {
           type: 'sale',
-          description: `Sold ${formData.quantity} ${formData.product}`,
-          amount: parseFloat(formData.quantity) * parseFloat(formData.price),
-          debit: `Cash $${(parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2)}`,
-          credit: `Revenue $${(parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2)}`
+          description: `Sold ${formData.quantity} ${formData.productName}${formData.isBoxed ? ' (boxed)' : ''}`,
+          amount: totalSaleAmount,
+          debit: `Cash $${totalSaleAmount.toFixed(2)}`,
+          credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
+          productName: formData.productName,
+          quantity: parseFloat(formData.quantity)
         };
         break;
       case 'expense':
@@ -71,12 +88,17 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
     
     onSubmit(transactionData);
     setFormData({
-      product: '',
+      productType: '',
+      productName: '',
       quantity: '',
+      milliliters: '',
+      grams: '',
       price: '',
       description: '',
       amount: '',
-      paymentMethod: 'cash'
+      paymentMethod: 'cash',
+      isBoxed: false,
+      boxPrice: ''
     });
   };
 
@@ -88,6 +110,178 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
       case 'withdrawal': return 'Owner Withdrawal';
       default: return 'Transaction';
     }
+  };
+
+  const renderProductFields = () => {
+    if (type === 'purchase') {
+      return (
+        <>
+          <div>
+            <Label htmlFor="productType">Product Type</Label>
+            <Select value={formData.productType} onValueChange={(value) => setFormData({...formData, productType: value, productName: ''})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select product type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bottles">Bottles</SelectItem>
+                <SelectItem value="oil">Oil</SelectItem>
+                <SelectItem value="box">Box</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.productType && (
+            <div>
+              <Label htmlFor="productName">Product Name</Label>
+              <Input
+                id="productName"
+                value={formData.productName}
+                onChange={(e) => setFormData({...formData, productName: e.target.value})}
+                placeholder="Enter product name"
+                required
+              />
+            </div>
+          )}
+
+          {formData.productType === 'bottles' && (
+            <>
+              <div>
+                <Label htmlFor="milliliters">Milliliters per bottle</Label>
+                <Input
+                  id="milliliters"
+                  type="number"
+                  value={formData.milliliters}
+                  onChange={(e) => setFormData({...formData, milliliters: e.target.value})}
+                  placeholder="Enter milliliters"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="quantity">Quantity (bottles)</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                  placeholder="Enter quantity"
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          {formData.productType === 'oil' && (
+            <div>
+              <Label htmlFor="grams">Grams</Label>
+              <Input
+                id="grams"
+                type="number"
+                value={formData.grams}
+                onChange={(e) => setFormData({...formData, grams: e.target.value})}
+                placeholder="Enter grams"
+                required
+              />
+            </div>
+          )}
+
+          {(formData.productType === 'box' || formData.productType === 'other') && (
+            <div>
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input
+                id="quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                placeholder="Enter quantity"
+                required
+              />
+            </div>
+          )}
+        </>
+      );
+    }
+
+    if (type === 'sale') {
+      return (
+        <>
+          <div>
+            <Label htmlFor="product">Product</Label>
+            <Select value={formData.productName} onValueChange={(value) => setFormData({...formData, productName: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select product" />
+              </SelectTrigger>
+              <SelectContent>
+                {inventory.map((item) => (
+                  <SelectItem key={item.id} value={item.name}>
+                    {item.name} ({item.quantity} available)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="quantity">Quantity</Label>
+            <Input
+              id="quantity"
+              type="number"
+              value={formData.quantity}
+              onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              placeholder="Enter quantity"
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="price">Price per Unit</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({...formData, price: e.target.value})}
+              placeholder="Enter price"
+              required
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isBoxed"
+              checked={formData.isBoxed}
+              onCheckedChange={(checked) => setFormData({...formData, isBoxed: checked as boolean})}
+            />
+            <Label htmlFor="isBoxed">Item Boxed/Packaged?</Label>
+          </div>
+
+          {formData.isBoxed && (
+            <div>
+              <Label htmlFor="boxPrice">Box/Package Price</Label>
+              <Input
+                id="boxPrice"
+                type="number"
+                step="0.01"
+                value={formData.boxPrice}
+                onChange={(e) => setFormData({...formData, boxPrice: e.target.value})}
+                placeholder="Enter box price"
+                required
+              />
+            </div>
+          )}
+          
+          {formData.quantity && formData.price && (
+            <div className="bg-green-50 p-3 rounded-lg">
+              <p className="text-sm text-green-700">
+                Total Sale: ${(parseFloat(formData.quantity) * parseFloat(formData.price) + (formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0)).toFixed(2)}
+              </p>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -103,65 +297,29 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {(type === 'purchase' || type === 'sale') && (
-            <>
-              <div>
-                <Label htmlFor="product">Product</Label>
-                <Select value={formData.product} onValueChange={(value) => setFormData({...formData, product: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {inventory.map((item) => (
-                      <SelectItem key={item.id} value={item.name}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                  placeholder="Enter quantity"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="price">Price per Unit</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  placeholder="Enter price"
-                  required
-                />
-              </div>
-              
-              {type === 'sale' && (
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-sm text-green-700">
-                    Total Sale: ${formData.quantity && formData.price ? (parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2) : '0.00'}
-                  </p>
-                </div>
-              )}
-              
-              {type === 'purchase' && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    Total Cost: ${formData.quantity && formData.price ? (parseFloat(formData.quantity) * parseFloat(formData.price)).toFixed(2) : '0.00'}
-                  </p>
-                </div>
-              )}
-            </>
+          {renderProductFields()}
+          
+          {type === 'purchase' && formData.productType && (
+            <div>
+              <Label htmlFor="price">Price per Unit</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                placeholder="Enter price"
+                required
+              />
+            </div>
+          )}
+
+          {type === 'purchase' && formData.quantity && formData.price && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                Total Cost: ${(parseFloat(formData.quantity || '0') * parseFloat(formData.price)).toFixed(2)}
+              </p>
+            </div>
           )}
           
           {(type === 'expense' || type === 'withdrawal') && (
