@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ interface Transaction {
 
 export const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const [cash, setCash] = useState(1000);
+  const [cash, setCash] = useState(0);
   const [inventory, setInventory] = useState<InventoryItem[]>([
     {
       id: '1',
@@ -67,7 +68,7 @@ export const Dashboard = () => {
   };
 
   const handleClearData = () => {
-    setCash(1000);
+    setCash(0);
     setInventory([
       {
         id: '1',
