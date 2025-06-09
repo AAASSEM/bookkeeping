@@ -183,21 +183,21 @@ export const Dashboard = () => {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString(),
       type: 'create',
-      description: `Created ${productData.quantity} ${productData.name}`,
-      amount: 0,
-      debit: `Inventory ${productData.name}`,
-      credit: `Raw Materials`
+      description: `Created ${productData.quantity} ${productData.name} (Cost: $${productData.totalCost.toFixed(2)})`,
+      amount: productData.totalCost,
+      debit: `Inventory ${productData.name} $${productData.totalCost.toFixed(2)}`,
+      credit: `Raw Materials $${productData.totalCost.toFixed(2)}`
     };
     
     setTransactions([...transactions, newTransaction]);
     
-    // Update inventory for created product
+    // Update inventory for created product with calculated cost
     const newItem: InventoryItem = {
       id: Date.now().toString(),
       name: productData.name,
       quantity: parseFloat(productData.quantity),
-      unitCost: 0,
-      totalValue: 0,
+      unitCost: productData.unitCost,
+      totalValue: productData.totalCost,
       type: 'other'
     };
     setInventory([...inventory, newItem]);
@@ -215,6 +215,7 @@ export const Dashboard = () => {
       const oilIndex = updatedInventory.findIndex(item => item.type === 'oil');
       if (oilIndex >= 0) {
         updatedInventory[oilIndex].grams = (updatedInventory[oilIndex].grams || 0) - parseFloat(productData.oilUsed);
+        updatedInventory[oilIndex].totalValue = (updatedInventory[oilIndex].grams || 0) * updatedInventory[oilIndex].unitCost;
       }
     }
     setInventory(updatedInventory.filter(item => item.quantity > 0 && (item.grams === undefined || item.grams > 0)));
