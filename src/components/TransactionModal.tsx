@@ -14,9 +14,10 @@ interface TransactionModalProps {
   onSubmit: (data: any) => void;
   type: 'purchase' | 'sale' | 'expense' | 'withdrawal';
   inventory: any[];
+  partners: { name: string; capital: number }[];
 }
 
-export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }: TransactionModalProps) => {
+export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, partners }: TransactionModalProps) => {
   const [formData, setFormData] = useState({
     productType: '',
     productName: '',
@@ -28,7 +29,8 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
     amount: '',
     paymentMethod: 'cash',
     isBoxed: false,
-    boxPrice: ''
+    boxPrice: '',
+    partnerName: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -88,10 +90,11 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
       case 'withdrawal':
         transactionData = {
           type: 'withdrawal',
-          description: 'Owner withdrawal',
+          description: `Capital withdrawal by ${formData.partnerName}`,
           amount: parseFloat(formData.amount),
-          debit: `Capital $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`
+          debit: `${formData.partnerName} Capital $${parseFloat(formData.amount).toFixed(2)}`,
+          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`,
+          partnerName: formData.partnerName
         };
         break;
     }
@@ -108,7 +111,8 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
       amount: '',
       paymentMethod: 'cash',
       isBoxed: false,
-      boxPrice: ''
+      boxPrice: '',
+      partnerName: ''
     });
   };
 
@@ -117,7 +121,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
       case 'purchase': return 'Purchase Inventory';
       case 'sale': return 'Record Sale';
       case 'expense': return 'Record Expense';
-      case 'withdrawal': return 'Owner Withdrawal';
+      case 'withdrawal': return 'Partner Withdrawal';
       default: return 'Transaction';
     }
   };
@@ -362,6 +366,24 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
                     placeholder="e.g., Shipping, Office supplies"
                     required
                   />
+                </div>
+              )}
+
+              {type === 'withdrawal' && (
+                <div>
+                  <Label htmlFor="partner">Partner</Label>
+                  <Select value={formData.partnerName} onValueChange={(value) => setFormData({...formData, partnerName: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select partner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {partners.map((partner) => (
+                        <SelectItem key={partner.name} value={partner.name}>
+                          {partner.name} (Capital: ${partner.capital.toFixed(2)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               

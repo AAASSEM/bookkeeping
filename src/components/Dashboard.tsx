@@ -80,6 +80,7 @@ export const Dashboard = () => {
     
     setTransactions(capitalTransactions);
     setCash(partnerData.reduce((sum, p) => sum + p.capital, 0));
+    setShowPartnerSetup(false); // Close the modal after setup
   };
 
   const saveCurrentState = () => {
@@ -243,6 +244,10 @@ export const Dashboard = () => {
     setShowPartnerSetup(true);
   };
 
+  const showPartnerSetupModal = () => {
+    setShowPartnerSetup(true);
+  };
+
   const exportToExcel = () => {
     // Create comprehensive CSV content with all financial statements
     let csvContent = "BUSINESS FINANCIAL STATEMENTS\n\n";
@@ -337,6 +342,15 @@ export const Dashboard = () => {
                 Export
               </Button>
               
+              <Button
+                onClick={showPartnerSetupModal}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Partner
+              </Button>
+              
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="flex items-center gap-2">
@@ -420,7 +434,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
             <Button 
               onClick={() => { setTransactionType('purchase'); setShowTransactionModal(true); }}
               className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-semibold dark:bg-blue-700 dark:hover:bg-blue-800"
@@ -448,6 +462,13 @@ export const Dashboard = () => {
             >
               <FileText className="mr-2 h-5 w-5" />
               Expenses
+            </Button>
+            <Button 
+              onClick={() => { setTransactionType('withdrawal'); setShowTransactionModal(true); }}
+              className="h-16 bg-red-600 hover:bg-red-700 text-white font-semibold dark:bg-red-700 dark:hover:bg-red-800"
+            >
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Withdraw
             </Button>
             <Button 
               onClick={() => setShowFinancialModal(true)}
@@ -533,7 +554,7 @@ export const Dashboard = () => {
         {/* Modals */}
         <PartnerSetupModal
           isOpen={showPartnerSetup}
-          onClose={() => {}}
+          onClose={() => setShowPartnerSetup(false)}
           onSubmit={handlePartnerSetup}
         />
 
@@ -543,6 +564,7 @@ export const Dashboard = () => {
           onSubmit={handleTransaction}
           type={transactionType}
           inventory={inventory}
+          partners={partners}
         />
 
         <CreateProductModal

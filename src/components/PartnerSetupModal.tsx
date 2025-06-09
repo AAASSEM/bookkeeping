@@ -44,7 +44,7 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit }: PartnerSetupMod
     
     if (validPartners.length > 0) {
       onSubmit(validPartners);
-      onClose();
+      // Modal will close automatically after successful submission
     }
   };
 
