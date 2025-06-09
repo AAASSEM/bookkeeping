@@ -38,18 +38,28 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
     
     switch (type) {
       case 'purchase':
-        const totalAmount = parseFloat(formData.quantity) * parseFloat(formData.price);
+        let totalAmount = 0;
+        let quantity = 0;
+        
+        if (formData.productType === 'oil') {
+          quantity = parseFloat(formData.grams);
+          totalAmount = quantity * parseFloat(formData.price);
+        } else {
+          quantity = parseFloat(formData.quantity);
+          totalAmount = quantity * parseFloat(formData.price);
+        }
+        
         transactionData = {
           type: 'purchase',
-          description: `Purchased ${formData.quantity} ${formData.productType} - ${formData.productName}`,
+          description: `Purchased ${formData.productType === 'oil' ? formData.grams + 'g' : formData.quantity} ${formData.productType} - ${formData.productName}`,
           amount: totalAmount,
           debit: `Inventory $${totalAmount.toFixed(2)}`,
           credit: `Cash $${totalAmount.toFixed(2)}`,
           productType: formData.productType,
           productName: formData.productName,
-          quantity: parseFloat(formData.quantity),
-          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined,
-          grams: formData.grams ? parseFloat(formData.grams) : undefined
+          quantity: formData.productType === 'oil' ? 1 : quantity,
+          grams: formData.productType === 'oil' ? parseFloat(formData.grams) : undefined,
+          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined
         };
         break;
       case 'sale':
@@ -112,13 +122,22 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
     }
   };
 
+  const calculatePurchaseTotal = () => {
+    if (formData.productType === 'oil' && formData.grams && formData.price) {
+      return parseFloat(formData.grams) * parseFloat(formData.price);
+    } else if (formData.quantity && formData.price) {
+      return parseFloat(formData.quantity) * parseFloat(formData.price);
+    }
+    return 0;
+  };
+
   const renderProductFields = () => {
     if (type === 'purchase') {
       return (
         <>
           <div>
             <Label htmlFor="productType">Product Type</Label>
-            <Select value={formData.productType} onValueChange={(value) => setFormData({...formData, productType: value, productName: ''})}>
+            <Select value={formData.productType} onValueChange={(value) => setFormData({...formData, productType: value, productName: '', quantity: '', grams: '', milliliters: ''})}>
               <SelectTrigger>
                 <SelectValue placeholder="Select product type" />
               </SelectTrigger>
@@ -133,12 +152,14 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
 
           {formData.productType && (
             <div>
-              <Label htmlFor="productName">Product Name</Label>
+              <Label htmlFor="productName">
+                {formData.productType === 'other' ? 'Product Name' : `${formData.productType.charAt(0).toUpperCase() + formData.productType.slice(0, -1)} Name`}
+              </Label>
               <Input
                 id="productName"
                 value={formData.productName}
                 onChange={(e) => setFormData({...formData, productName: e.target.value})}
-                placeholder="Enter product name"
+                placeholder={`Enter ${formData.productType === 'other' ? 'product' : formData.productType.slice(0, -1)} name`}
                 required
               />
             </div>
@@ -151,6 +172,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
                 <Input
                   id="milliliters"
                   type="number"
+                  step="0.01"
                   value={formData.milliliters}
                   onChange={(e) => setFormData({...formData, milliliters: e.target.value})}
                   placeholder="Enter milliliters"
@@ -162,6 +184,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
                 <Input
                   id="quantity"
                   type="number"
+                  step="0.01"
                   value={formData.quantity}
                   onChange={(e) => setFormData({...formData, quantity: e.target.value})}
                   placeholder="Enter quantity"
@@ -177,6 +200,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
               <Input
                 id="grams"
                 type="number"
+                step="0.01"
                 value={formData.grams}
                 onChange={(e) => setFormData({...formData, grams: e.target.value})}
                 placeholder="Enter grams"
@@ -191,6 +215,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
               <Input
                 id="quantity"
                 type="number"
+                step="0.01"
                 value={formData.quantity}
                 onChange={(e) => setFormData({...formData, quantity: e.target.value})}
                 placeholder="Enter quantity"
@@ -214,7 +239,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
               <SelectContent>
                 {inventory.map((item) => (
                   <SelectItem key={item.id} value={item.name}>
-                    {item.name} ({item.quantity} available)
+                    {item.name} ({item.type === 'oil' ? `${item.grams}g` : `${item.quantity} units`} available)
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -226,6 +251,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
             <Input
               id="quantity"
               type="number"
+              step="0.01"
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: e.target.value})}
               placeholder="Enter quantity"
@@ -301,7 +327,9 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
           
           {type === 'purchase' && formData.productType && (
             <div>
-              <Label htmlFor="price">Price per Unit</Label>
+              <Label htmlFor="price">
+                Price per {formData.productType === 'oil' ? 'Gram' : 'Unit'}
+              </Label>
               <Input
                 id="price"
                 type="number"
@@ -314,10 +342,10 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory }:
             </div>
           )}
 
-          {type === 'purchase' && formData.quantity && formData.price && (
+          {type === 'purchase' && formData.productType && ((formData.productType === 'oil' && formData.grams && formData.price) || (formData.productType !== 'oil' && formData.quantity && formData.price)) && (
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-sm text-blue-700">
-                Total Cost: ${(parseFloat(formData.quantity || '0') * parseFloat(formData.price)).toFixed(2)}
+                Total Cost: ${calculatePurchaseTotal().toFixed(2)}
               </p>
             </div>
           )}

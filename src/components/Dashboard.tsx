@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun, Undo2, Download } from 'lucide-react';
 import { TransactionModal } from './TransactionModal';
 import { FinancialStatementsModal } from './FinancialStatementsModal';
 import { CreateProductModal } from './CreateProductModal';
+import { PartnerSetupModal } from './PartnerSetupModal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface InventoryItem {
@@ -26,14 +27,24 @@ interface Transaction {
   amount: number;
   debit: string;
   credit: string;
+  productName?: string;
+  quantity?: number;
+  unitCost?: number;
+}
+
+interface Partner {
+  name: string;
+  capital: number;
 }
 
 export const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const [cash, setCash] = useState(0);
-  const [totalSales, setTotalSales] = useState(0);
+  const [cash, setCash] = useState(0.0);
+  const [totalSales, setTotalSales] = useState(0.0);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [showPartnerSetup, setShowPartnerSetup] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState<{transactions: Transaction[], cash: number, inventory: InventoryItem[], totalSales: number}[]>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,6 +52,35 @@ export const Dashboard = () => {
   const [transactionType, setTransactionType] = useState<'purchase' | 'sale' | 'expense' | 'withdrawal'>('purchase');
 
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
+
+  useEffect(() => {
+    // Check if partners are set up on first use
+    const hasPartners = localStorage.getItem('businessPartners');
+    if (!hasPartners) {
+      setShowPartnerSetup(true);
+    } else {
+      setPartners(JSON.parse(hasPartners));
+    }
+  }, []);
+
+  const handlePartnerSetup = (partnerData: Partner[]) => {
+    setPartners(partnerData);
+    localStorage.setItem('businessPartners', JSON.stringify(partnerData));
+    
+    // Add initial capital transactions
+    const capitalTransactions = partnerData.map(partner => ({
+      id: `capital-${Date.now()}-${Math.random()}`,
+      date: new Date().toLocaleDateString(),
+      type: 'purchase' as const,
+      description: `Initial capital from ${partner.name}`,
+      amount: partner.capital,
+      debit: `Cash $${partner.capital.toFixed(2)}`,
+      credit: `${partner.name} Capital $${partner.capital.toFixed(2)}`
+    }));
+    
+    setTransactions(capitalTransactions);
+    setCash(partnerData.reduce((sum, p) => sum + p.capital, 0));
+  };
 
   const saveCurrentState = () => {
     setTransactionHistory(prev => [...prev, {
@@ -64,8 +104,8 @@ export const Dashboard = () => {
     
     // Update cash and inventory based on transaction type
     if (transactionData.type === 'purchase') {
-      setCash(prev => prev - transactionData.amount);
-      // Update inventory logic here
+      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+      
       const existingItemIndex = inventory.findIndex(item => 
         item.name === transactionData.productName && item.type === transactionData.productType
       );
@@ -73,41 +113,63 @@ export const Dashboard = () => {
       if (existingItemIndex >= 0) {
         const updatedInventory = [...inventory];
         const existingItem = updatedInventory[existingItemIndex];
-        const newTotalQuantity = existingItem.quantity + transactionData.quantity;
-        const newTotalValue = existingItem.totalValue + transactionData.amount;
-        updatedInventory[existingItemIndex] = {
-          ...existingItem,
-          quantity: newTotalQuantity,
-          unitCost: newTotalValue / newTotalQuantity,
-          totalValue: newTotalValue
-        };
+        
+        if (transactionData.productType === 'oil') {
+          // For oil, add to grams
+          const newGrams = (existingItem.grams || 0) + parseFloat(transactionData.grams || '0');
+          const newTotalValue = existingItem.totalValue + transactionData.amount;
+          updatedInventory[existingItemIndex] = {
+            ...existingItem,
+            grams: newGrams,
+            unitCost: newTotalValue / newGrams,
+            totalValue: newTotalValue
+          };
+        } else {
+          // For other products, add to quantity
+          const newTotalQuantity = existingItem.quantity + parseFloat(transactionData.quantity || '0');
+          const newTotalValue = existingItem.totalValue + transactionData.amount;
+          updatedInventory[existingItemIndex] = {
+            ...existingItem,
+            quantity: newTotalQuantity,
+            unitCost: newTotalValue / newTotalQuantity,
+            totalValue: newTotalValue
+          };
+        }
         setInventory(updatedInventory);
       } else {
         const newItem: InventoryItem = {
           id: Date.now().toString(),
           name: transactionData.productName,
-          quantity: transactionData.quantity,
-          unitCost: transactionData.amount / transactionData.quantity,
+          quantity: parseFloat(transactionData.quantity || '0'),
+          unitCost: transactionData.amount / parseFloat(transactionData.quantity || transactionData.grams || '1'),
           totalValue: transactionData.amount,
           type: transactionData.productType,
-          milliliters: transactionData.milliliters,
-          grams: transactionData.grams
+          milliliters: transactionData.milliliters ? parseFloat(transactionData.milliliters) : undefined,
+          grams: transactionData.grams ? parseFloat(transactionData.grams) : undefined
         };
         setInventory([...inventory, newItem]);
       }
     } else if (transactionData.type === 'sale') {
-      setCash(prev => prev + transactionData.amount);
-      setTotalSales(prev => prev + transactionData.amount);
-      // Update inventory logic here
+      setCash(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
+      setTotalSales(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
+      
+      // Calculate COGS and update inventory
       const itemIndex = inventory.findIndex(item => item.name === transactionData.productName);
       if (itemIndex >= 0) {
         const updatedInventory = [...inventory];
-        updatedInventory[itemIndex].quantity -= transactionData.quantity;
+        const item = updatedInventory[itemIndex];
+        const soldQuantity = parseFloat(transactionData.quantity || '0');
+        const cogs = item.unitCost * soldQuantity;
+        
+        // Update transaction with COGS information
+        newTransaction.unitCost = item.unitCost;
+        
+        updatedInventory[itemIndex].quantity -= soldQuantity;
         updatedInventory[itemIndex].totalValue = updatedInventory[itemIndex].quantity * updatedInventory[itemIndex].unitCost;
         setInventory(updatedInventory.filter(item => item.quantity > 0));
       }
     } else if (transactionData.type === 'expense' || transactionData.type === 'withdrawal') {
-      setCash(prev => prev - transactionData.amount);
+      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
     }
     
     setShowTransactionModal(false);
@@ -132,8 +194,8 @@ export const Dashboard = () => {
     const newItem: InventoryItem = {
       id: Date.now().toString(),
       name: productData.name,
-      quantity: productData.quantity,
-      unitCost: 0, // Created products have no direct cost
+      quantity: parseFloat(productData.quantity),
+      unitCost: 0,
       totalValue: 0,
       type: 'other'
     };
@@ -144,14 +206,14 @@ export const Dashboard = () => {
     if (productData.bottlesUsed > 0) {
       const bottleIndex = updatedInventory.findIndex(item => item.type === 'bottles');
       if (bottleIndex >= 0) {
-        updatedInventory[bottleIndex].quantity -= productData.bottlesUsed;
+        updatedInventory[bottleIndex].quantity -= parseFloat(productData.bottlesUsed);
         updatedInventory[bottleIndex].totalValue = updatedInventory[bottleIndex].quantity * updatedInventory[bottleIndex].unitCost;
       }
     }
     if (productData.oilUsed > 0) {
       const oilIndex = updatedInventory.findIndex(item => item.type === 'oil');
       if (oilIndex >= 0) {
-        updatedInventory[oilIndex].grams = (updatedInventory[oilIndex].grams || 0) - productData.oilUsed;
+        updatedInventory[oilIndex].grams = (updatedInventory[oilIndex].grams || 0) - parseFloat(productData.oilUsed);
       }
     }
     setInventory(updatedInventory.filter(item => item.quantity > 0 && (item.grams === undefined || item.grams > 0)));
@@ -171,18 +233,57 @@ export const Dashboard = () => {
   };
 
   const handleClearData = () => {
-    setCash(0);
-    setTotalSales(0);
+    setCash(0.0);
+    setTotalSales(0.0);
     setInventory([]);
     setTransactions([]);
     setTransactionHistory([]);
+    localStorage.removeItem('businessPartners');
+    setPartners([]);
+    setShowPartnerSetup(true);
   };
 
   const exportToExcel = () => {
-    // Create CSV content
-    let csvContent = "Date,Description,Type,Amount,Debit,Credit\n";
+    // Create comprehensive CSV content with all financial statements
+    let csvContent = "BUSINESS FINANCIAL STATEMENTS\n\n";
+    
+    // Trial Balance
+    csvContent += "TRIAL BALANCE\n";
+    csvContent += "Account,Debit,Credit\n";
+    csvContent += `Cash,${cash.toFixed(2)},\n`;
+    
+    // Detailed inventory breakdown
+    const inventoryByType = inventory.reduce((acc, item) => {
+      if (!acc[item.type]) acc[item.type] = [];
+      acc[item.type].push(item);
+      return acc;
+    }, {} as Record<string, InventoryItem[]>);
+    
+    Object.entries(inventoryByType).forEach(([type, items]) => {
+      csvContent += `${type.charAt(0).toUpperCase() + type.slice(1)},${items.reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)},\n`;
+    });
+    
+    const totalRevenue = transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    
+    csvContent += `Revenue,,${totalRevenue.toFixed(2)}\n`;
+    csvContent += `Expenses,${totalExpenses.toFixed(2)},\n`;
+    csvContent += "\n";
+    
+    // General Journal
+    csvContent += "GENERAL JOURNAL\n";
+    csvContent += "Date,Description,Type,Amount,Debit,Credit\n";
     transactions.forEach(transaction => {
-      csvContent += `${transaction.date},"${transaction.description}",${transaction.type},${transaction.amount},"${transaction.debit}","${transaction.credit}"\n`;
+      csvContent += `${transaction.date},"${transaction.description}",${transaction.type},${transaction.amount.toFixed(2)},"${transaction.debit}","${transaction.credit}"\n`;
+    });
+    csvContent += "\n";
+    
+    // Sales Ledger
+    csvContent += "SALES LEDGER\n";
+    csvContent += "Date,Product,Quantity,Unit Price,Total Amount\n";
+    transactions.filter(t => t.type === 'sale').forEach(transaction => {
+      const unitPrice = transaction.quantity ? transaction.amount / transaction.quantity : transaction.amount;
+      csvContent += `${transaction.date},"${transaction.productName || 'Unknown'}",${transaction.quantity || 1},${unitPrice.toFixed(2)},${transaction.amount.toFixed(2)}\n`;
     });
     
     // Create and download file
@@ -190,7 +291,7 @@ export const Dashboard = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'transactions.csv';
+    a.download = 'financial_statements.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -279,7 +380,7 @@ export const Dashboard = () => {
                 <DollarSign className="h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${cash.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${cash.toFixed(2)}</div>
                 <p className="text-green-100 text-xs">Available cash</p>
               </CardContent>
             </Card>
@@ -290,7 +391,7 @@ export const Dashboard = () => {
                 <Package className="h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${totalInventoryValue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${totalInventoryValue.toFixed(2)}</div>
                 <p className="text-blue-100 text-xs">Total stock value</p>
               </CardContent>
             </Card>
@@ -301,7 +402,7 @@ export const Dashboard = () => {
                 <TrendingUp className="h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${totalSales.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
                 <p className="text-orange-100 text-xs">Cumulative sales</p>
               </CardContent>
             </Card>
@@ -312,7 +413,7 @@ export const Dashboard = () => {
                 <TrendingUp className="h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${(cash + totalInventoryValue).toLocaleString()}</div>
+                <div className="text-2xl font-bold">${(cash + totalInventoryValue).toFixed(2)}</div>
                 <p className="text-purple-100 text-xs">Cash + Inventory</p>
               </CardContent>
             </Card>
@@ -377,9 +478,11 @@ export const Dashboard = () => {
                     {inventory.map((item) => (
                       <tr key={item.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
                         <td className="py-3 px-4 text-slate-800 dark:text-slate-100">{item.name}</td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">{item.quantity}</td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">${item.unitCost}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800 dark:text-slate-100">${item.totalValue.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                          {item.type === 'oil' ? `${item.grams}g` : item.quantity}
+                        </td>
+                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">${item.unitCost.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-slate-800 dark:text-slate-100">${item.totalValue.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -428,6 +531,12 @@ export const Dashboard = () => {
         </div>
 
         {/* Modals */}
+        <PartnerSetupModal
+          isOpen={showPartnerSetup}
+          onClose={() => {}}
+          onSubmit={handlePartnerSetup}
+        />
+
         <TransactionModal
           isOpen={showTransactionModal}
           onClose={() => setShowTransactionModal(false)}
@@ -449,6 +558,7 @@ export const Dashboard = () => {
           inventory={inventory}
           transactions={transactions}
           cash={cash}
+          partners={partners}
         />
       </div>
     </div>
