@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -71,8 +72,11 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
             Create Product
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogTitle>
         </DialogHeader>
         
@@ -122,21 +126,21 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
               step="0.01"
               value={formData.oilUsed}
               onChange={(e) => setFormData({...formData, oilUsed: e.target.value})}
-              placeholder={`Available: ${availableOil}g (Cost: $${oilItem?.unitCost.toFixed(4) || '0.0000'} per gram)`}
+              placeholder={`Available: ${availableOil}g (Cost: $${oilItem?.unitCost.toFixed(2) || '0.00'} per gram)`}
               max={availableOil}
             />
           </div>
           
-          <div className="bg-primary/10 p-3 rounded-lg space-y-2">
-            <p className="text-sm text-primary">
+          <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+            <p className="text-sm text-blue-700">
               This will create {formData.quantity || 0} units of "{formData.name}" using {formData.bottlesUsed || 0} bottles and {formData.oilUsed || 0}g of oil.
             </p>
-            <div className="text-sm text-primary font-semibold">
+            <div className="text-sm text-blue-800 font-semibold">
               <p>Cost Breakdown:</p>
               <p>• Bottles: ${bottleCost.toFixed(2)}</p>
-              <p>• Oil: ${oilCost.toFixed(4)}</p>
-              <p>• Total Cost: ${totalCost.toFixed(4)}</p>
-              <p>• Cost per Unit: ${unitCost.toFixed(4)}</p>
+              <p>• Oil: ${oilCost.toFixed(2)}</p>
+              <p>• Total Cost: ${totalCost.toFixed(2)}</p>
+              <p>• Cost per Unit: ${unitCost.toFixed(2)}</p>
             </div>
           </div>
           
@@ -144,7 +148,7 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
+            <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
               Create Product
             </Button>
           </div>

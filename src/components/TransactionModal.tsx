@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { X } from 'lucide-react';
 
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss';
+  type: 'purchase' | 'sale' | 'expense' | 'withdrawal';
   inventory: any[];
   partners: { name: string; capital: number }[];
 }
@@ -60,8 +61,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           productName: formData.productName,
           quantity: formData.productType === 'oil' ? 1 : quantity,
           grams: formData.productType === 'oil' ? parseFloat(formData.grams) : undefined,
-          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined,
-          unitCost: parseFloat(formData.price)
+          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined
         };
         break;
       case 'sale':
@@ -75,9 +75,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           debit: `Cash $${totalSaleAmount.toFixed(2)}`,
           credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
           productName: formData.productName,
-          quantity: parseFloat(formData.quantity),
-          isBoxed: formData.isBoxed,
-          boxQuantity: formData.isBoxed ? parseFloat(formData.quantity) : 0
+          quantity: parseFloat(formData.quantity)
         };
         break;
       case 'expense':
@@ -97,24 +95,6 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           debit: `${formData.partnerName} Capital $${parseFloat(formData.amount).toFixed(2)}`,
           credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`,
           partnerName: formData.partnerName
-        };
-        break;
-      case 'gain':
-        transactionData = {
-          type: 'gain',
-          description: formData.description || 'Business gain',
-          amount: parseFloat(formData.amount),
-          debit: `Cash $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Gain $${parseFloat(formData.amount).toFixed(2)}`
-        };
-        break;
-      case 'loss':
-        transactionData = {
-          type: 'loss',
-          description: formData.description || 'Business loss',
-          amount: parseFloat(formData.amount),
-          debit: `Loss $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`
         };
         break;
     }
@@ -142,8 +122,6 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
       case 'sale': return 'Record Sale';
       case 'expense': return 'Record Expense';
       case 'withdrawal': return 'Partner Withdrawal';
-      case 'gain': return 'Record Gain';
-      case 'loss': return 'Record Loss';
       default: return 'Transaction';
     }
   };
@@ -323,8 +301,8 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           )}
           
           {formData.quantity && formData.price && (
-            <div className="bg-secondary/20 p-3 rounded-lg">
-              <p className="text-sm text-secondary-foreground">
+            <div className="bg-green-50 p-3 rounded-lg">
+              <p className="text-sm text-green-700">
                 Total Sale: ${(parseFloat(formData.quantity) * parseFloat(formData.price) + (formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0)).toFixed(2)}
               </p>
             </div>
@@ -340,8 +318,11 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
             {getTitle()}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogTitle>
         </DialogHeader>
         
@@ -366,24 +347,24 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           )}
 
           {type === 'purchase' && formData.productType && ((formData.productType === 'oil' && formData.grams && formData.price) || (formData.productType !== 'oil' && formData.quantity && formData.price)) && (
-            <div className="bg-primary/10 p-3 rounded-lg">
-              <p className="text-sm text-primary">
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
                 Total Cost: ${calculatePurchaseTotal().toFixed(2)}
               </p>
             </div>
           )}
           
-          {(type === 'expense' || type === 'withdrawal' || type === 'gain' || type === 'loss') && (
+          {(type === 'expense' || type === 'withdrawal') && (
             <>
-              {(type === 'expense' || type === 'gain' || type === 'loss') && (
+              {type === 'expense' && (
                 <div>
                   <Label htmlFor="description">Description</Label>
                   <Input
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder={type === 'expense' ? "e.g., Shipping, Office supplies" : `Enter ${type} description`}
-                    required={type === 'expense'}
+                    placeholder="e.g., Shipping, Office supplies"
+                    required
                   />
                 </div>
               )}
@@ -438,7 +419,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
+            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
               Save Transaction
             </Button>
           </div>
