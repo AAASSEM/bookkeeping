@@ -1,587 +1,379 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun, Undo2, Download } from 'lucide-react';
-import { TransactionModal } from './TransactionModal';
-import { FinancialStatementsModal } from './FinancialStatementsModal';
-import { CreateProductModal } from './CreateProductModal';
-import { PartnerSetupModal } from './PartnerSetupModal';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { CreateProductModal } from '@/components/CreateProductModal';
+import { TransactionModal } from '@/components/TransactionModal';
+import { FinancialStatementsModal } from '@/components/FinancialStatementsModal';
+import { PartnerModal } from '@/components/PartnerModal';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  totalValue: number;
-  type: 'bottles' | 'oil' | 'box' | 'other';
-  milliliters?: number;
-  grams?: number;
+interface DashboardProps {
+  
 }
 
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create';
-  amount: number;
-  debit: string;
-  credit: string;
-  productName?: string;
-  quantity?: number;
-  unitCost?: number;
-}
-
-interface Partner {
-  name: string;
-  capital: number;
-}
-
-export const Dashboard = () => {
-  const [darkMode, setDarkMode] = useState(false);
-  const [cash, setCash] = useState(0.0);
-  const [totalSales, setTotalSales] = useState(0.0);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [showPartnerSetup, setShowPartnerSetup] = useState(false);
-  const [transactionHistory, setTransactionHistory] = useState<{transactions: Transaction[], cash: number, inventory: InventoryItem[], totalSales: number}[]>([]);
-  const [showTransactionModal, setShowTransactionModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFinancialModal, setShowFinancialModal] = useState(false);
-  const [transactionType, setTransactionType] = useState<'purchase' | 'sale' | 'expense' | 'withdrawal'>('purchase');
-
-  const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
-
-  useEffect(() => {
-    // Check if partners are set up on first use
-    const hasPartners = localStorage.getItem('businessPartners');
-    if (!hasPartners) {
-      setShowPartnerSetup(true);
-    } else {
-      setPartners(JSON.parse(hasPartners));
-    }
-  }, []);
-
-  const handlePartnerSetup = (partnerData: Partner[]) => {
-    setPartners(partnerData);
-    localStorage.setItem('businessPartners', JSON.stringify(partnerData));
-    
-    // Add initial capital transactions
-    const capitalTransactions = partnerData.map(partner => ({
-      id: `capital-${Date.now()}-${Math.random()}`,
-      date: new Date().toLocaleDateString(),
-      type: 'purchase' as const,
-      description: `Initial capital from ${partner.name}`,
-      amount: partner.capital,
-      debit: `Cash $${partner.capital.toFixed(2)}`,
-      credit: `${partner.name} Capital $${partner.capital.toFixed(2)}`
-    }));
-    
-    setTransactions(capitalTransactions);
-    setCash(partnerData.reduce((sum, p) => sum + p.capital, 0));
-    setShowPartnerSetup(false); // Close the modal after setup
-  };
-
-  const saveCurrentState = () => {
-    setTransactionHistory(prev => [...prev, {
-      transactions: [...transactions],
-      cash,
-      inventory: [...inventory],
-      totalSales
-    }]);
-  };
+export const Dashboard: React.FC<DashboardProps> = () => {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([
+    { id: 1, name: '50ml Bottles', type: 'bottles', quantity: 50, unitCost: 0.5 },
+    { id: 2, name: '100ml Bottles', type: 'bottles', quantity: 30, unitCost: 0.7 },
+    { id: 3, name: 'Boxes', type: 'box', quantity: 100, unitCost: 1.0 },
+    { id: 4, name: 'Essential Oil X', type: 'oil', grams: 500, unitCost: 0.02 },
+    { id: 5, name: 'Carrier Oil Y', type: 'oil', grams: 1000, unitCost: 0.015 }
+  ]);
+  const [partners, setPartners] = useState<any[]>([
+    { name: 'Alice', capital: 5000 },
+    { name: 'Bob', capital: 3000 }
+  ]);
+  const [modalState, setModalState] = useState({ isOpen: false, type: 'purchase' });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [partnerModalOpen, setPartnerModalOpen] = useState(false);
+  const [financialModalOpen, setFinancialModalOpen] = useState(false);
 
   const handleTransaction = (transactionData: any) => {
-    saveCurrentState();
+    console.log('Processing transaction:', transactionData);
     
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
+    const newTransaction = {
+      id: Date.now(),
       date: new Date().toLocaleDateString(),
       ...transactionData
     };
     
     setTransactions([...transactions, newTransaction]);
     
-    // Update cash and inventory based on transaction type
+    // Update inventory based on transaction type
     if (transactionData.type === 'purchase') {
-      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
-      
-      const existingItemIndex = inventory.findIndex(item => 
-        item.name === transactionData.productName && item.type === transactionData.productType
+      const updatedInventory = [...inventory];
+      const existingIndex = updatedInventory.findIndex(
+        item => item.name === transactionData.productName && item.type === transactionData.productType
       );
       
-      if (existingItemIndex >= 0) {
-        const updatedInventory = [...inventory];
-        const existingItem = updatedInventory[existingItemIndex];
-        
+      if (existingIndex >= 0) {
         if (transactionData.productType === 'oil') {
-          // For oil, add to grams
-          const newGrams = (existingItem.grams || 0) + parseFloat(transactionData.grams || '0');
-          const newTotalValue = existingItem.totalValue + transactionData.amount;
-          updatedInventory[existingItemIndex] = {
-            ...existingItem,
-            grams: newGrams,
-            unitCost: newTotalValue / newGrams,
-            totalValue: newTotalValue
-          };
+          updatedInventory[existingIndex].grams += transactionData.grams;
         } else {
-          // For other products, add to quantity
-          const newTotalQuantity = existingItem.quantity + parseFloat(transactionData.quantity || '0');
-          const newTotalValue = existingItem.totalValue + transactionData.amount;
-          updatedInventory[existingItemIndex] = {
-            ...existingItem,
-            quantity: newTotalQuantity,
-            unitCost: newTotalValue / newTotalQuantity,
-            totalValue: newTotalValue
-          };
+          updatedInventory[existingIndex].quantity += transactionData.quantity;
         }
-        setInventory(updatedInventory);
+        // Update unit cost with weighted average
+        const existingValue = updatedInventory[existingIndex].unitCost * (transactionData.productType === 'oil' ? updatedInventory[existingIndex].grams - transactionData.grams : updatedInventory[existingIndex].quantity - transactionData.quantity);
+        const newValue = transactionData.unitCost * (transactionData.productType === 'oil' ? transactionData.grams : transactionData.quantity);
+        const totalQuantity = transactionData.productType === 'oil' ? updatedInventory[existingIndex].grams : updatedInventory[existingIndex].quantity;
+        updatedInventory[existingIndex].unitCost = (existingValue + newValue) / totalQuantity;
       } else {
-        const newItem: InventoryItem = {
-          id: Date.now().toString(),
+        const newItem = {
+          id: Date.now(),
           name: transactionData.productName,
-          quantity: parseFloat(transactionData.quantity || '0'),
-          unitCost: transactionData.amount / parseFloat(transactionData.quantity || transactionData.grams || '1'),
-          totalValue: transactionData.amount,
           type: transactionData.productType,
-          milliliters: transactionData.milliliters ? parseFloat(transactionData.milliliters) : undefined,
-          grams: transactionData.grams ? parseFloat(transactionData.grams) : undefined
+          quantity: transactionData.productType === 'oil' ? 1 : transactionData.quantity,
+          grams: transactionData.productType === 'oil' ? transactionData.grams : undefined,
+          milliliters: transactionData.milliliters,
+          unitCost: transactionData.unitCost
         };
-        setInventory([...inventory, newItem]);
+        updatedInventory.push(newItem);
       }
+      setInventory(updatedInventory);
     } else if (transactionData.type === 'sale') {
-      setCash(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
-      setTotalSales(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
+      const updatedInventory = [...inventory];
+      const productIndex = updatedInventory.findIndex(item => item.name === transactionData.productName);
       
-      // Calculate COGS and update inventory
-      const itemIndex = inventory.findIndex(item => item.name === transactionData.productName);
-      if (itemIndex >= 0) {
-        const updatedInventory = [...inventory];
-        const item = updatedInventory[itemIndex];
-        const soldQuantity = parseFloat(transactionData.quantity || '0');
-        const cogs = item.unitCost * soldQuantity;
+      if (productIndex >= 0) {
+        const soldQuantity = parseFloat(transactionData.quantity);
+        if (updatedInventory[productIndex].type === 'oil') {
+          updatedInventory[productIndex].grams -= soldQuantity;
+          if (updatedInventory[productIndex].grams <= 0) {
+            updatedInventory.splice(productIndex, 1);
+          }
+        } else {
+          updatedInventory[productIndex].quantity -= soldQuantity;
+          if (updatedInventory[productIndex].quantity <= 0) {
+            updatedInventory.splice(productIndex, 1);
+          }
+        }
         
-        // Update transaction with COGS information
-        newTransaction.unitCost = item.unitCost;
-        
-        updatedInventory[itemIndex].quantity -= soldQuantity;
-        updatedInventory[itemIndex].totalValue = updatedInventory[itemIndex].quantity * updatedInventory[itemIndex].unitCost;
-        setInventory(updatedInventory.filter(item => item.quantity > 0));
+        // Handle box inventory deduction
+        if (transactionData.isBoxed && transactionData.boxQuantity > 0) {
+          const boxIndex = updatedInventory.findIndex(item => item.type === 'box');
+          if (boxIndex >= 0) {
+            updatedInventory[boxIndex].quantity -= transactionData.boxQuantity;
+            if (updatedInventory[boxIndex].quantity <= 0) {
+              updatedInventory.splice(boxIndex, 1);
+            }
+          }
+        }
       }
-    } else if (transactionData.type === 'expense' || transactionData.type === 'withdrawal') {
-      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+      setInventory(updatedInventory);
+    } else if (transactionData.type === 'withdrawal') {
+      // Update partner capital
+      const updatedPartners = partners.map(partner => 
+        partner.name === transactionData.partnerName 
+          ? { ...partner, capital: partner.capital - parseFloat(transactionData.amount) }
+          : partner
+      );
+      setPartners(updatedPartners);
     }
     
-    setShowTransactionModal(false);
+    setModalState({ isOpen: false, type: 'purchase' });
   };
 
   const handleCreateProduct = (productData: any) => {
-    saveCurrentState();
+    console.log('Creating product:', productData);
     
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleDateString(),
-      type: 'create',
-      description: `Created ${productData.quantity} ${productData.name} (Cost: $${productData.totalCost.toFixed(2)})`,
-      amount: productData.totalCost,
-      debit: `Inventory ${productData.name} $${productData.totalCost.toFixed(2)}`,
-      credit: `Raw Materials $${productData.totalCost.toFixed(2)}`
-    };
-    
-    setTransactions([...transactions, newTransaction]);
-    
-    // Update inventory for created product with calculated cost
-    const newItem: InventoryItem = {
-      id: Date.now().toString(),
+    // Add the new product to inventory
+    const newProduct = {
+      id: Date.now(),
       name: productData.name,
+      type: 'product',
       quantity: parseFloat(productData.quantity),
       unitCost: productData.unitCost,
-      totalValue: productData.totalCost,
-      type: 'other'
+      totalCost: productData.totalCost
     };
-    setInventory([...inventory, newItem]);
+    
+    const updatedInventory = [...inventory, newProduct];
     
     // Reduce raw materials from inventory
-    const updatedInventory = [...inventory];
-    if (productData.bottlesUsed > 0) {
-      const bottleIndex = updatedInventory.findIndex(item => item.type === 'bottles');
-      if (bottleIndex >= 0) {
-        updatedInventory[bottleIndex].quantity -= parseFloat(productData.bottlesUsed);
-        updatedInventory[bottleIndex].totalValue = updatedInventory[bottleIndex].quantity * updatedInventory[bottleIndex].unitCost;
+    const bottlesIndex = updatedInventory.findIndex(item => item.type === 'bottles');
+    if (bottlesIndex >= 0 && productData.bottlesUsed > 0) {
+      updatedInventory[bottlesIndex].quantity -= parseFloat(productData.bottlesUsed);
+      if (updatedInventory[bottlesIndex].quantity <= 0) {
+        updatedInventory.splice(bottlesIndex, 1);
       }
     }
-    if (productData.oilUsed > 0) {
-      const oilIndex = updatedInventory.findIndex(item => item.type === 'oil');
-      if (oilIndex >= 0) {
-        updatedInventory[oilIndex].grams = (updatedInventory[oilIndex].grams || 0) - parseFloat(productData.oilUsed);
-        updatedInventory[oilIndex].totalValue = (updatedInventory[oilIndex].grams || 0) * updatedInventory[oilIndex].unitCost;
+    
+    const oilIndex = updatedInventory.findIndex(item => item.type === 'oil');
+    if (oilIndex >= 0 && productData.oilUsed > 0) {
+      updatedInventory[oilIndex].grams -= parseFloat(productData.oilUsed);
+      if (updatedInventory[oilIndex].grams <= 0) {
+        updatedInventory.splice(oilIndex, 1);
       }
     }
-    setInventory(updatedInventory.filter(item => item.quantity > 0 && (item.grams === undefined || item.grams > 0)));
     
-    setShowCreateModal(false);
+    setInventory(updatedInventory);
+    
+    // Add transaction record
+    const productionTransaction = {
+      id: Date.now() + 1,
+      date: new Date().toLocaleDateString(),
+      type: 'production',
+      description: `Created ${productData.quantity} units of ${productData.name}`,
+      amount: productData.totalCost,
+      debit: `Finished Goods $${productData.totalCost.toFixed(2)}`,
+      credit: `Raw Materials $${productData.totalCost.toFixed(2)}`,
+      productName: productData.name,
+      quantity: productData.quantity
+    };
+    
+    setTransactions([...transactions, productionTransaction]);
+    setCreateModalOpen(false);
   };
 
-  const handleUndo = () => {
-    if (transactionHistory.length > 0) {
-      const lastState = transactionHistory[transactionHistory.length - 1];
-      setTransactions(lastState.transactions);
-      setCash(lastState.cash);
-      setInventory(lastState.inventory);
-      setTotalSales(lastState.totalSales);
-      setTransactionHistory(prev => prev.slice(0, -1));
+  const handleAddPartner = (partnerData: any) => {
+    setPartners([...partners, partnerData]);
+    setPartnerModalOpen(false);
+  };
+
+  // Calculate total inventory value
+  const totalInventoryValue = inventory.reduce((total, item) => {
+    const itemValue = item.type === 'oil' ? item.grams * item.unitCost : item.quantity * item.unitCost;
+    return total + itemValue;
+  }, 0);
+
+  // Calculate total cash on hand (simplified: sum of all debits - sum of all credits)
+  const totalCashOnHand = transactions.reduce((total, transaction) => {
+    let amount = parseFloat(transaction.amount);
+    if (transaction.type === 'purchase' || transaction.type === 'expense' || transaction.type === 'loss') {
+      return total - amount;
+    } else if (transaction.type === 'sale' || transaction.type === 'gain') {
+      return total + amount;
+    } else if (transaction.type === 'withdrawal') {
+      return total - amount;
     }
-  };
+    return total;
+  }, 0);
 
-  const handleClearData = () => {
-    setCash(0.0);
-    setTotalSales(0.0);
-    setInventory([]);
-    setTransactions([]);
-    setTransactionHistory([]);
-    localStorage.removeItem('businessPartners');
-    setPartners([]);
-    setShowPartnerSetup(true);
-  };
-
-  const showPartnerSetupModal = () => {
-    setShowPartnerSetup(true);
-  };
-
-  const exportToExcel = () => {
-    // Create comprehensive CSV content with all financial statements
-    let csvContent = "BUSINESS FINANCIAL STATEMENTS\n\n";
-    
-    // Trial Balance
-    csvContent += "TRIAL BALANCE\n";
-    csvContent += "Account,Debit,Credit\n";
-    csvContent += `Cash,${cash.toFixed(2)},\n`;
-    
-    // Detailed inventory breakdown
-    const inventoryByType = inventory.reduce((acc, item) => {
-      if (!acc[item.type]) acc[item.type] = [];
-      acc[item.type].push(item);
-      return acc;
-    }, {} as Record<string, InventoryItem[]>);
-    
-    Object.entries(inventoryByType).forEach(([type, items]) => {
-      csvContent += `${type.charAt(0).toUpperCase() + type.slice(1)},${items.reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)},\n`;
-    });
-    
-    const totalRevenue = transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    
-    csvContent += `Revenue,,${totalRevenue.toFixed(2)}\n`;
-    csvContent += `Expenses,${totalExpenses.toFixed(2)},\n`;
-    csvContent += "\n";
-    
-    // General Journal
-    csvContent += "GENERAL JOURNAL\n";
-    csvContent += "Date,Description,Type,Amount,Debit,Credit\n";
-    transactions.forEach(transaction => {
-      csvContent += `${transaction.date},"${transaction.description}",${transaction.type},${transaction.amount.toFixed(2)},"${transaction.debit}","${transaction.credit}"\n`;
-    });
-    csvContent += "\n";
-    
-    // Sales Ledger
-    csvContent += "SALES LEDGER\n";
-    csvContent += "Date,Product,Quantity,Unit Price,Total Amount\n";
-    transactions.filter(t => t.type === 'sale').forEach(transaction => {
-      const unitPrice = transaction.quantity ? transaction.amount / transaction.quantity : transaction.amount;
-      csvContent += `${transaction.date},"${transaction.productName || 'Unknown'}",${transaction.quantity || 1},${unitPrice.toFixed(2)},${transaction.amount.toFixed(2)}\n`;
-    });
-    
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'financial_statements.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (!darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
+  // Calculate total partner capital
+  const totalPartnerCapital = partners.reduce((total, partner) => total + partner.capital, 0);
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Business Dashboard</h1>
-              <p className="text-slate-600 dark:text-slate-300">Track your inventory, cash flow, and transactions</p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                onClick={handleUndo}
-                disabled={transactionHistory.length === 0}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Undo2 className="h-4 w-4" />
-                Undo
-              </Button>
-              
-              <Button
-                onClick={exportToExcel}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              
-              <Button
-                onClick={showPartnerSetupModal}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Partner
-              </Button>
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="flex items-center gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    Clear Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear All Data</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action will permanently delete all transactions and reset your data to the initial state. 
-                      This cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearData}>
-                      Clear Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleDarkMode}
-                className="border-slate-300 dark:border-slate-600"
-              >
-                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white dark:from-green-600 dark:to-green-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cash Balance</CardTitle>
-                <DollarSign className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${cash.toFixed(2)}</div>
-                <p className="text-green-100 text-xs">Available cash</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white dark:from-blue-600 dark:to-blue-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
-                <Package className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${totalInventoryValue.toFixed(2)}</div>
-                <p className="text-blue-100 text-xs">Total stock value</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white dark:from-orange-600 dark:to-orange-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-                <TrendingUp className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
-                <p className="text-orange-100 text-xs">Cumulative sales</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white dark:from-purple-600 dark:to-purple-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
-                <TrendingUp className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${(cash + totalInventoryValue).toFixed(2)}</div>
-                <p className="text-purple-100 text-xs">Cash + Inventory</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Business Dashboard</h1>
+          <div className="flex gap-3">
             <Button 
-              onClick={() => { setTransactionType('purchase'); setShowTransactionModal(true); }}
-              className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-semibold dark:bg-blue-700 dark:hover:bg-blue-800"
+              onClick={() => setCreateModalOpen(true)}
+              className="bg-primary hover:bg-primary/90"
             >
-              <Plus className="mr-2 h-5 w-5" />
-              Purchase
+              Create Product
             </Button>
             <Button 
-              onClick={() => { setTransactionType('sale'); setShowTransactionModal(true); }}
-              className="h-16 bg-green-600 hover:bg-green-700 text-white font-semibold dark:bg-green-700 dark:hover:bg-green-800"
+              onClick={() => setPartnerModalOpen(true)}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
             >
-              <DollarSign className="mr-2 h-5 w-5" />
-              Sell
-            </Button>
-            <Button 
-              onClick={() => setShowCreateModal(true)}
-              className="h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold dark:bg-indigo-700 dark:hover:bg-indigo-800"
-            >
-              <Package className="mr-2 h-5 w-5" />
-              Create
-            </Button>
-            <Button 
-              onClick={() => { setTransactionType('expense'); setShowTransactionModal(true); }}
-              className="h-16 bg-orange-600 hover:bg-orange-700 text-white font-semibold dark:bg-orange-700 dark:hover:bg-orange-800"
-            >
-              <FileText className="mr-2 h-5 w-5" />
-              Expenses
-            </Button>
-            <Button 
-              onClick={() => { setTransactionType('withdrawal'); setShowTransactionModal(true); }}
-              className="h-16 bg-red-600 hover:bg-red-700 text-white font-semibold dark:bg-red-700 dark:hover:bg-red-800"
-            >
-              <TrendingUp className="mr-2 h-5 w-5" />
-              Withdraw
-            </Button>
-            <Button 
-              onClick={() => setShowFinancialModal(true)}
-              className="h-16 bg-purple-600 hover:bg-purple-700 text-white font-semibold dark:bg-purple-700 dark:hover:bg-purple-800"
-            >
-              <TrendingUp className="mr-2 h-5 w-5" />
-              F/S
+              Add Partner
             </Button>
           </div>
+        </div>
 
-          {/* Current Inventory */}
-          <Card className="mb-8 bg-card dark:bg-slate-800 border-border dark:border-slate-700">
+        {/* Action Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'purchase' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Purchase</span>
+            <span className="text-sm">Buy Inventory</span>
+          </Button>
+          
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'sale' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Sale</span>
+            <span className="text-sm">Record Sale</span>
+          </Button>
+          
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'expense' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Expense</span>
+            <span className="text-sm">Record Expense</span>
+          </Button>
+          
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'withdrawal' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Withdrawal</span>
+            <span className="text-sm">Partner Draw</span>
+          </Button>
+          
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'gain' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Gain</span>
+            <span className="text-sm">Record Gain</span>
+          </Button>
+          
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'loss' })}
+            className="h-24 bg-card border border-border hover:bg-accent flex flex-col items-center justify-center text-card-foreground"
+            variant="outline"
+          >
+            <span className="text-lg font-semibold">Loss</span>
+            <span className="text-sm">Record Loss</span>
+          </Button>
+        </div>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-100">Current Inventory</CardTitle>
+              <CardTitle>Total Inventory Value</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Product</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Quantity</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Unit Cost</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Total Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventory.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-                        <td className="py-3 px-4 text-slate-800 dark:text-slate-100">{item.name}</td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
-                          {item.type === 'oil' ? `${item.grams}g` : item.quantity}
-                        </td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">${item.unitCost.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800 dark:text-slate-100">${item.totalValue.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              ${totalInventoryValue.toFixed(2)}
             </CardContent>
           </Card>
-
-          {/* Recent Transactions */}
-          <Card className="bg-card dark:bg-slate-800 border-border dark:border-slate-700">
+          
+          <Card>
             <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-100">Recent Transactions</CardTitle>
+              <CardTitle>Total Cash on Hand</CardTitle>
             </CardHeader>
             <CardContent>
-              {transactions.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                  <FileText className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No transactions yet. Add your first transaction above!</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
-                        <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Description</th>
-                        <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Debit</th>
-                        <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Credit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.slice(-5).reverse().map((transaction) => (
-                        <tr key={transaction.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-                          <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{transaction.date}</td>
-                          <td className="py-3 px-4 text-slate-800 dark:text-slate-100">{transaction.description}</td>
-                          <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">{transaction.debit}</td>
-                          <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">{transaction.credit}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              ${totalCashOnHand.toFixed(2)}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Partner Capital</CardTitle>
+            </CardHeader>
+            <CardContent>
+              ${totalPartnerCapital.toFixed(2)}
             </CardContent>
           </Card>
         </div>
 
-        {/* Modals */}
-        <PartnerSetupModal
-          isOpen={showPartnerSetup}
-          onClose={() => setShowPartnerSetup(false)}
-          onSubmit={handlePartnerSetup}
-        />
+        {/* Recent Transactions */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Recent Transactions</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full leading-normal">
+              <thead>
+                <tr>
+                  <th className="px-5 py-3 border-b-2 border-border bg-background text-left text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-5 py-3 border-b-2 border-border bg-background text-left text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-5 py-3 border-b-2 border-border bg-background text-left text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-5 py-3 border-b-2 border-border bg-background text-left text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map(transaction => (
+                  <tr key={transaction.id}>
+                    <td className="px-5 py-5 border-b border-border bg-background text-sm">
+                      {transaction.date}
+                    </td>
+                    <td className="px-5 py-5 border-b border-border bg-background text-sm">
+                      {transaction.type}
+                    </td>
+                    <td className="px-5 py-5 border-b border-border bg-background text-sm">
+                      {transaction.description}
+                    </td>
+                    <td className="px-5 py-5 border-b border-border bg-background text-sm">
+                      ${transaction.amount.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-        <TransactionModal
-          isOpen={showTransactionModal}
-          onClose={() => setShowTransactionModal(false)}
-          onSubmit={handleTransaction}
-          type={transactionType}
-          inventory={inventory}
-          partners={partners}
-        />
+        <Button onClick={() => setFinancialModalOpen(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          View Financial Statements
+        </Button>
 
         <CreateProductModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          isOpen={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
           onSubmit={handleCreateProduct}
           inventory={inventory}
         />
 
-        <FinancialStatementsModal
-          isOpen={showFinancialModal}
-          onClose={() => setShowFinancialModal(false)}
+        <TransactionModal
+          isOpen={modalState.isOpen}
+          onClose={() => setModalState({ isOpen: false, type: 'purchase' })}
+          onSubmit={handleTransaction}
+          type={modalState.type}
           inventory={inventory}
-          transactions={transactions}
-          cash={cash}
           partners={partners}
+        />
+
+        <FinancialStatementsModal
+          isOpen={financialModalOpen}
+          onClose={() => setFinancialModalOpen(false)}
+          transactions={transactions}
+          inventory={inventory}
+          partners={partners}
+        />
+
+        <PartnerModal
+          isOpen={partnerModalOpen}
+          onClose={() => setPartnerModalOpen(false)}
+          onSubmit={handleAddPartner}
         />
       </div>
     </div>
