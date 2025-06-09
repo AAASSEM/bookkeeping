@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X } from 'lucide-react';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -72,12 +71,7 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Create Product
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>Create Product</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,11 +125,11 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
             />
           </div>
           
-          <div className="bg-blue-50 p-3 rounded-lg space-y-2">
-            <p className="text-sm text-blue-700">
+          <div className="bg-primary/20 p-3 rounded-lg space-y-2">
+            <p className="text-sm text-primary-foreground">
               This will create {formData.quantity || 0} units of "{formData.name}" using {formData.bottlesUsed || 0} bottles and {formData.oilUsed || 0}g of oil.
             </p>
-            <div className="text-sm text-blue-800 font-semibold">
+            <div className="text-sm text-primary-foreground font-semibold">
               <p>Cost Breakdown:</p>
               <p>• Bottles: ${bottleCost.toFixed(2)}</p>
               <p>• Oil: ${oilCost.toFixed(2)}</p>
@@ -148,7 +142,7 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
               Create Product
             </Button>
           </div>

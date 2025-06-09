@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun, Undo2, Download } from 'lucide-react';
+import { Plus, TrendingUp, Package, DollarSign, FileText, Trash2, Moon, Sun, Undo2, Download, TrendingDown } from 'lucide-react';
 import { TransactionModal } from './TransactionModal';
 import { FinancialStatementsModal } from './FinancialStatementsModal';
 import { CreateProductModal } from './CreateProductModal';
@@ -23,13 +23,14 @@ interface Transaction {
   id: string;
   date: string;
   description: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create';
+  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create' | 'gain' | 'loss';
   amount: number;
   debit: string;
   credit: string;
   productName?: string;
   quantity?: number;
   unitCost?: number;
+  partnerName?: string;
 }
 
 interface Partner {
@@ -45,11 +46,11 @@ export const Dashboard = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [showPartnerSetup, setShowPartnerSetup] = useState(false);
-  const [transactionHistory, setTransactionHistory] = useState<{transactions: Transaction[], cash: number, inventory: InventoryItem[], totalSales: number}[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<{transactions: Transaction[], cash: number, inventory: InventoryItem[], totalSales: number, partners: Partner[]}[]>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
-  const [transactionType, setTransactionType] = useState<'purchase' | 'sale' | 'expense' | 'withdrawal'>('purchase');
+  const [transactionType, setTransactionType] = useState<'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss'>('purchase');
 
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
 
@@ -88,7 +89,8 @@ export const Dashboard = () => {
       transactions: [...transactions],
       cash,
       inventory: [...inventory],
-      totalSales
+      totalSales,
+      partners: [...partners]
     }]);
   };
 
@@ -116,7 +118,7 @@ export const Dashboard = () => {
         const existingItem = updatedInventory[existingItemIndex];
         
         if (transactionData.productType === 'oil') {
-          // For oil, add to grams
+          // For oil, add to grams and recalculate unit cost
           const newGrams = (existingItem.grams || 0) + parseFloat(transactionData.grams || '0');
           const newTotalValue = existingItem.totalValue + transactionData.amount;
           updatedInventory[existingItemIndex] = {
@@ -141,8 +143,8 @@ export const Dashboard = () => {
         const newItem: InventoryItem = {
           id: Date.now().toString(),
           name: transactionData.productName,
-          quantity: parseFloat(transactionData.quantity || '0'),
-          unitCost: transactionData.amount / parseFloat(transactionData.quantity || transactionData.grams || '1'),
+          quantity: parseFloat(transactionData.quantity || '1'),
+          unitCost: transactionData.unitCost,
           totalValue: transactionData.amount,
           type: transactionData.productType,
           milliliters: transactionData.milliliters ? parseFloat(transactionData.milliliters) : undefined,
@@ -154,23 +156,52 @@ export const Dashboard = () => {
       setCash(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
       setTotalSales(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
       
-      // Calculate COGS and update inventory
+      // Update inventory
       const itemIndex = inventory.findIndex(item => item.name === transactionData.productName);
       if (itemIndex >= 0) {
         const updatedInventory = [...inventory];
         const item = updatedInventory[itemIndex];
         const soldQuantity = parseFloat(transactionData.quantity || '0');
-        const cogs = item.unitCost * soldQuantity;
         
         // Update transaction with COGS information
         newTransaction.unitCost = item.unitCost;
         
-        updatedInventory[itemIndex].quantity -= soldQuantity;
-        updatedInventory[itemIndex].totalValue = updatedInventory[itemIndex].quantity * updatedInventory[itemIndex].unitCost;
-        setInventory(updatedInventory.filter(item => item.quantity > 0));
+        if (item.type === 'oil') {
+          updatedInventory[itemIndex].grams = (updatedInventory[itemIndex].grams || 0) - soldQuantity;
+          updatedInventory[itemIndex].totalValue = (updatedInventory[itemIndex].grams || 0) * updatedInventory[itemIndex].unitCost;
+        } else {
+          updatedInventory[itemIndex].quantity -= soldQuantity;
+          updatedInventory[itemIndex].totalValue = updatedInventory[itemIndex].quantity * updatedInventory[itemIndex].unitCost;
+        }
+        
+        // Handle box deduction if item is boxed
+        if (transactionData.isBoxed) {
+          const boxIndex = updatedInventory.findIndex(item => item.type === 'box');
+          if (boxIndex >= 0) {
+            updatedInventory[boxIndex].quantity -= soldQuantity;
+            updatedInventory[boxIndex].totalValue = updatedInventory[boxIndex].quantity * updatedInventory[boxIndex].unitCost;
+          }
+        }
+        
+        setInventory(updatedInventory.filter(item => 
+          (item.quantity > 0 || (item.type === 'oil' && (item.grams || 0) > 0))
+        ));
       }
-    } else if (transactionData.type === 'expense' || transactionData.type === 'withdrawal') {
+    } else if (transactionData.type === 'expense' || transactionData.type === 'loss') {
       setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+    } else if (transactionData.type === 'gain') {
+      setCash(prev => parseFloat((prev + transactionData.amount).toFixed(2)));
+    } else if (transactionData.type === 'withdrawal') {
+      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+      
+      // Update partner capital
+      const updatedPartners = partners.map(partner => 
+        partner.name === transactionData.partnerName 
+          ? { ...partner, capital: parseFloat((partner.capital - transactionData.amount).toFixed(2)) }
+          : partner
+      );
+      setPartners(updatedPartners);
+      localStorage.setItem('businessPartners', JSON.stringify(updatedPartners));
     }
     
     setShowTransactionModal(false);
@@ -218,7 +249,9 @@ export const Dashboard = () => {
         updatedInventory[oilIndex].totalValue = (updatedInventory[oilIndex].grams || 0) * updatedInventory[oilIndex].unitCost;
       }
     }
-    setInventory(updatedInventory.filter(item => item.quantity > 0 && (item.grams === undefined || item.grams > 0)));
+    setInventory(updatedInventory.filter(item => 
+      (item.quantity > 0 || (item.type === 'oil' && (item.grams || 0) > 0))
+    ));
     
     setShowCreateModal(false);
   };
@@ -230,6 +263,8 @@ export const Dashboard = () => {
       setCash(lastState.cash);
       setInventory(lastState.inventory);
       setTotalSales(lastState.totalSales);
+      setPartners(lastState.partners);
+      localStorage.setItem('businessPartners', JSON.stringify(lastState.partners));
       setTransactionHistory(prev => prev.slice(0, -1));
     }
   };
@@ -315,13 +350,13 @@ export const Dashboard = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Business Dashboard</h1>
-              <p className="text-slate-600 dark:text-slate-300">Track your inventory, cash flow, and transactions</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Business Dashboard</h1>
+              <p className="text-muted-foreground">Track your inventory, cash flow, and transactions</p>
             </div>
             <div className="flex gap-3">
               <Button
@@ -380,7 +415,7 @@ export const Dashboard = () => {
                 variant="outline"
                 size="icon"
                 onClick={toggleDarkMode}
-                className="border-slate-300 dark:border-slate-600"
+                className="border-border"
               >
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
@@ -389,122 +424,136 @@ export const Dashboard = () => {
 
           {/* Quick Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white dark:from-green-600 dark:to-green-700">
+            <Card className="bg-gradient-to-r from-accent to-accent/80 text-black">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Cash Balance</CardTitle>
                 <DollarSign className="h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${cash.toFixed(2)}</div>
-                <p className="text-green-100 text-xs">Available cash</p>
+                <p className="text-black/70 text-xs">Available cash</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white dark:from-blue-600 dark:to-blue-700">
+            <Card className="bg-gradient-to-r from-primary to-primary/80 text-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
                 <Package className="h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${totalInventoryValue.toFixed(2)}</div>
-                <p className="text-blue-100 text-xs">Total stock value</p>
+                <p className="text-white/70 text-xs">Total stock value</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white dark:from-orange-600 dark:to-orange-700">
+            <Card className="bg-gradient-to-r from-accent/80 to-primary/60 text-foreground">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
                 <TrendingUp className="h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
-                <p className="text-orange-100 text-xs">Cumulative sales</p>
+                <p className="text-muted-foreground text-xs">Cumulative sales</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white dark:from-purple-600 dark:to-purple-700">
+            <Card className="bg-gradient-to-r from-primary/80 to-accent/60 text-foreground">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
                 <TrendingUp className="h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${(cash + totalInventoryValue).toFixed(2)}</div>
-                <p className="text-purple-100 text-xs">Cash + Inventory</p>
+                <p className="text-muted-foreground text-xs">Cash + Inventory</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
             <Button 
               onClick={() => { setTransactionType('purchase'); setShowTransactionModal(true); }}
-              className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-semibold dark:bg-blue-700 dark:hover:bg-blue-800"
+              className="h-16 bg-primary hover:bg-primary/90 text-white font-semibold"
             >
               <Plus className="mr-2 h-5 w-5" />
               Purchase
             </Button>
             <Button 
               onClick={() => { setTransactionType('sale'); setShowTransactionModal(true); }}
-              className="h-16 bg-green-600 hover:bg-green-700 text-white font-semibold dark:bg-green-700 dark:hover:bg-green-800"
+              className="h-16 bg-accent hover:bg-accent/90 text-black font-semibold"
             >
               <DollarSign className="mr-2 h-5 w-5" />
               Sell
             </Button>
             <Button 
               onClick={() => setShowCreateModal(true)}
-              className="h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold dark:bg-indigo-700 dark:hover:bg-indigo-800"
+              className="h-16 bg-primary/80 hover:bg-primary/70 text-white font-semibold"
             >
               <Package className="mr-2 h-5 w-5" />
               Create
             </Button>
             <Button 
               onClick={() => { setTransactionType('expense'); setShowTransactionModal(true); }}
-              className="h-16 bg-orange-600 hover:bg-orange-700 text-white font-semibold dark:bg-orange-700 dark:hover:bg-orange-800"
+              className="h-16 bg-accent/80 hover:bg-accent/70 text-black font-semibold"
             >
               <FileText className="mr-2 h-5 w-5" />
               Expenses
             </Button>
             <Button 
               onClick={() => { setTransactionType('withdrawal'); setShowTransactionModal(true); }}
-              className="h-16 bg-red-600 hover:bg-red-700 text-white font-semibold dark:bg-red-700 dark:hover:bg-red-800"
+              className="h-16 bg-destructive hover:bg-destructive/90 text-white font-semibold"
             >
-              <TrendingUp className="mr-2 h-5 w-5" />
+              <TrendingDown className="mr-2 h-5 w-5" />
               Withdraw
             </Button>
             <Button 
-              onClick={() => setShowFinancialModal(true)}
-              className="h-16 bg-purple-600 hover:bg-purple-700 text-white font-semibold dark:bg-purple-700 dark:hover:bg-purple-800"
+              onClick={() => { setTransactionType('gain'); setShowTransactionModal(true); }}
+              className="h-16 bg-accent/60 hover:bg-accent/50 text-black font-semibold"
             >
               <TrendingUp className="mr-2 h-5 w-5" />
-              F/S
+              Gain
+            </Button>
+            <Button 
+              onClick={() => { setTransactionType('loss'); setShowTransactionModal(true); }}
+              className="h-16 bg-primary/60 hover:bg-primary/50 text-white font-semibold"
+            >
+              <TrendingDown className="mr-2 h-5 w-5" />
+              Loss
+            </Button>
+            <Button 
+              onClick={() => setShowFinancialModal(true)}
+              className="h-16 bg-gradient-to-r from-primary to-accent text-black font-semibold md:col-span-7"
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              Financial Statements
             </Button>
           </div>
 
           {/* Current Inventory */}
-          <Card className="mb-8 bg-card dark:bg-slate-800 border-border dark:border-slate-700">
+          <Card className="mb-8 bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-100">Current Inventory</CardTitle>
+              <CardTitle className="text-foreground">Current Inventory</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Product</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Quantity</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Unit Cost</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Total Value</th>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Product</th>
+                      <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Quantity</th>
+                      <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Unit Cost</th>
+                      <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Total Value</th>
                     </tr>
                   </thead>
                   <tbody>
                     {inventory.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-                        <td className="py-3 px-4 text-slate-800 dark:text-slate-100">{item.name}</td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                      <tr key={item.id} className="border-b border-border hover:bg-muted/50">
+                        <td className="py-3 px-4 text-foreground">{item.name}</td>
+                        <td className="py-3 px-4 text-right text-muted-foreground">
                           {item.type === 'oil' ? `${item.grams}g` : item.quantity}
                         </td>
-                        <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">${item.unitCost.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800 dark:text-slate-100">${item.totalValue.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right text-muted-foreground">${item.unitCost.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-foreground">${item.totalValue.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -514,13 +563,13 @@ export const Dashboard = () => {
           </Card>
 
           {/* Recent Transactions */}
-          <Card className="bg-card dark:bg-slate-800 border-border dark:border-slate-700">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-100">Recent Transactions</CardTitle>
+              <CardTitle className="text-foreground">Recent Transactions</CardTitle>
             </CardHeader>
             <CardContent>
               {transactions.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                <div className="text-center py-8 text-muted-foreground">
                   <FileText className="mx-auto h-12 w-12 mb-4 opacity-50" />
                   <p>No transactions yet. Add your first transaction above!</p>
                 </div>
@@ -528,20 +577,20 @@ export const Dashboard = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
-                        <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Description</th>
-                        <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Debit</th>
-                        <th className="text-right py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">Credit</th>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Date</th>
+                        <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Description</th>
+                        <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Debit</th>
+                        <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
                       {transactions.slice(-5).reverse().map((transaction) => (
-                        <tr key={transaction.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-                          <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{transaction.date}</td>
-                          <td className="py-3 px-4 text-slate-800 dark:text-slate-100">{transaction.description}</td>
-                          <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">{transaction.debit}</td>
-                          <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">{transaction.credit}</td>
+                        <tr key={transaction.id} className="border-b border-border hover:bg-muted/50">
+                          <td className="py-3 px-4 text-muted-foreground">{transaction.date}</td>
+                          <td className="py-3 px-4 text-foreground">{transaction.description}</td>
+                          <td className="py-3 px-4 text-right text-muted-foreground">{transaction.debit}</td>
+                          <td className="py-3 px-4 text-right text-muted-foreground">{transaction.credit}</td>
                         </tr>
                       ))}
                     </tbody>
