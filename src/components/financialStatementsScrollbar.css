@@ -1,0 +1,17 @@
+/* Custom Scrollbar for Financial Statements */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 #e5e7eb;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #6366f1;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 8px;
+} 

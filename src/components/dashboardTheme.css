@@ -1,0 +1,66 @@
+:root {
+    --color-bg-main: #000000;
+    --color-bg-card: #0a0a0a;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #a1a1aa;
+    --color-accent: #e0115f;
+    --color-success: #22c55e;
+    --color-danger: #dc143c;
+    --color-warning: #f59e42;
+    --color-row-hover: #1a1a1a;
+    --color-border: #1a1a1a;
+    --color-input-bg: #0a0a0a;
+    --color-button-hover: #b01050;
+  }
+  
+  .bg-main {
+    background: var(--color-bg-main);
+  }
+  .bg-card {
+    background: var(--color-bg-card);
+  }
+  .text-primary {
+    color: var(--color-text-primary);
+  }
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+  .text-accent {
+    color: var(--color-accent);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+  .text-danger {
+    color: var(--color-danger);
+  }
+  .text-warning {
+    color: var(--color-warning);
+  }
+  .border-default {
+    border-color: var(--color-border);
+  }
+  .input-bg {
+    background: var(--color-input-bg);
+    color: var(--color-text-primary);
+  }
+  .button-primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  .button-primary:hover {
+    background: var(--color-button-hover);
+  }
+  .button-secondary {
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+  }
+  .button-secondary:hover {
+    background: var(--color-row-hover);
+  }
+  .table-row-hover:hover {
+    background: var(--color-row-hover);
+  }
+  .divider {
+    border-color: var(--color-border);
+  }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,10 @@ interface TransactionModalProps {
 }
 
 export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, partners }: TransactionModalProps) => {
+  // For multi-product sale
+  const [saleItems, setSaleItems] = useState([
+    { productName: '', quantity: '', isBoxed: false, boxPrice: '', price: '' }
+  ]);
   const [formData, setFormData] = useState({
     productType: '',
     productName: '',
@@ -32,11 +35,37 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
     partnerName: ''
   });
 
+  const handleSaleItemChange = (idx: number, field: string, value: any) => {
+    setSaleItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
+  const addSaleItem = () => setSaleItems(items => [...items, { productName: '', quantity: '', isBoxed: false, boxPrice: '', price: '' }]);
+  const removeSaleItem = (idx: number) => setSaleItems(items => items.length > 1 ? items.filter((_, i) => i !== idx) : items);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     let transactionData;
-    
+    if (type === 'sale') {
+      // Send array of sale items
+      transactionData = saleItems.map(item => {
+        const selectedProduct = inventory.find(p => p.name === item.productName && p.type === 'created');
+        if (!selectedProduct) throw new Error('Selected product not found');
+        const saleAmount = parseFloat(item.quantity) * selectedProduct.sellingPrice;
+        const boxAmount = item.isBoxed ? parseFloat(item.boxPrice || '0') : 0;
+        const totalSaleAmount = saleAmount + boxAmount;
+        return {
+          type: 'sale',
+          description: `Sold ${item.quantity} ${item.productName}${item.isBoxed ? ' (boxed)' : ''}`,
+          amount: totalSaleAmount,
+          debit: `Cash $${totalSaleAmount.toFixed(2)}`,
+          credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
+          productName: item.productName,
+          quantity: parseFloat(item.quantity),
+          isBoxed: item.isBoxed,
+          boxPrice: item.isBoxed ? parseFloat(item.boxPrice || '0') : 0,
+          unitCost: selectedProduct.unitCost
+        };
+      });
+    } else {
     switch (type) {
       case 'purchase':
         let totalAmount = 0;
@@ -62,22 +91,6 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           grams: formData.productType === 'oil' ? parseFloat(formData.grams) : undefined,
           milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined,
           unitCost: parseFloat(formData.price)
-        };
-        break;
-      case 'sale':
-        const saleAmount = parseFloat(formData.quantity) * parseFloat(formData.price);
-        const boxAmount = formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0;
-        const totalSaleAmount = saleAmount + boxAmount;
-        transactionData = {
-          type: 'sale',
-          description: `Sold ${formData.quantity} ${formData.productName}${formData.isBoxed ? ' (boxed)' : ''}`,
-          amount: totalSaleAmount,
-          debit: `Cash $${totalSaleAmount.toFixed(2)}`,
-          credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
-          productName: formData.productName,
-          quantity: parseFloat(formData.quantity),
-          isBoxed: formData.isBoxed,
-          boxPrice: formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0
         };
         break;
       case 'expense':
@@ -118,8 +131,9 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
         };
         break;
     }
-    
+    }
     onSubmit(transactionData);
+    setSaleItems([{ productName: '', quantity: '', isBoxed: false, boxPrice: '', price: '' }]);
     setFormData({
       productType: '',
       productName: '',
@@ -251,84 +265,94 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           )}
         </>
       );
-    }
-
-    if (type === 'sale') {
+    } else if (type === 'sale') {
+      const createdProducts = inventory.filter(item => item.type === 'created');
       return (
         <>
-          <div>
-            <Label htmlFor="product">Product</Label>
-            <Select value={formData.productName} onValueChange={(value) => setFormData({...formData, productName: value})}>
+          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            {saleItems.map((item, idx) => (
+              <div key={idx} className="border p-2 mb-2 rounded-md bg-muted/30">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label>Select Product</Label>
+                    <Select
+                      value={item.productName}
+                      onValueChange={value => {
+                        const selectedProduct = createdProducts.find(p => p.name === value);
+                        handleSaleItemChange(idx, 'productName', value);
+                        handleSaleItemChange(idx, 'price', selectedProduct?.sellingPrice?.toString() || '');
+                        handleSaleItemChange(idx, 'quantity', '');
+                      }}
+                    >
               <SelectTrigger>
-                <SelectValue placeholder="Select product" />
+                        <SelectValue placeholder="Select a product to sell" />
               </SelectTrigger>
               <SelectContent>
-                {inventory.map((item) => (
-                  <SelectItem key={item.id} value={item.name}>
-                    {item.name} ({item.type === 'oil' ? `${item.grams}g` : `${item.quantity} units`} available)
+                        {createdProducts.map(product => (
+                          <SelectItem key={product.id} value={product.name}>
+                            {product.name} (Available: {product.quantity})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
+                  <Button type="button" variant="destructive" onClick={() => removeSaleItem(idx)} disabled={saleItems.length === 1}>Remove</Button>
+                </div>
+                {item.productName && (
+                  <>
           <div>
-            <Label htmlFor="quantity">Quantity</Label>
+                      <Label>Quantity</Label>
             <Input
-              id="quantity"
               type="number"
               step="0.01"
-              value={formData.quantity}
-              onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                        value={item.quantity}
+                        onChange={e => handleSaleItemChange(idx, 'quantity', e.target.value)}
               placeholder="Enter quantity"
+                        max={createdProducts.find(p => p.name === item.productName)?.quantity || 0}
               required
             />
           </div>
-          
           <div>
-            <Label htmlFor="price">Price per Unit</Label>
+                      <Label>Price per Unit</Label>
             <Input
-              id="price"
               type="number"
               step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({...formData, price: e.target.value})}
-              placeholder="Enter price"
-              required
+                        value={item.price}
+                        disabled
+                        className="bg-muted"
             />
           </div>
-
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="isBoxed"
-              checked={formData.isBoxed}
-              onCheckedChange={(checked) => setFormData({...formData, isBoxed: checked as boolean})}
+                        checked={item.isBoxed}
+                        onCheckedChange={checked => handleSaleItemChange(idx, 'isBoxed', checked as boolean)}
             />
-            <Label htmlFor="isBoxed">Item Boxed/Packaged?</Label>
+                      <Label>Package in Box</Label>
           </div>
-
-          {formData.isBoxed && (
+                    {item.isBoxed && (
             <div>
-              <Label htmlFor="boxPrice">Box/Package Price</Label>
+                        <Label>Box Price</Label>
               <Input
-                id="boxPrice"
                 type="number"
                 step="0.01"
-                value={formData.boxPrice}
-                onChange={(e) => setFormData({...formData, boxPrice: e.target.value})}
+                          value={item.boxPrice}
+                          onChange={e => handleSaleItemChange(idx, 'boxPrice', e.target.value)}
                 placeholder="Enter box price"
                 required
               />
             </div>
           )}
-          
-          {formData.quantity && formData.price && (
-            <div className="bg-accent/20 p-3 rounded-lg">
-              <p className="text-sm text-accent-foreground">
-                Total Sale: ${(parseFloat(formData.quantity) * parseFloat(formData.price) + (formData.isBoxed ? parseFloat(formData.boxPrice || '0') : 0)).toFixed(2)}
+                    <div className="bg-primary/20 p-3 rounded-lg">
+                      <p className="text-sm text-primary-foreground">
+                        Total Sale Amount: ${(parseFloat(item.quantity || '0') * parseFloat(item.price || '0') + parseFloat(item.boxPrice || '0')).toFixed(2)}
               </p>
             </div>
+                  </>
           )}
+              </div>
+            ))}
+          </div>
+          <Button type="button" variant="outline" onClick={addSaleItem} className="w-full mb-2">+ Add Another Product</Button>
         </>
       );
     }

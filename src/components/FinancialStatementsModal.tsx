@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
+import './financialStatementsScrollbar.css';
 
 interface InventoryItem {
   id: string;
@@ -11,22 +11,24 @@ interface InventoryItem {
   quantity: number;
   unitCost: number;
   totalValue: number;
-  type: 'bottles' | 'oil' | 'box' | 'other';
+  type: 'bottles' | 'oil' | 'box' | 'other' | 'created';
   milliliters?: number;
   grams?: number;
+  sellingPrice?: number;
 }
 
 interface Transaction {
   id: string;
   date: string;
   description: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create';
+  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create' | 'gain' | 'loss' | 'closing' | 'manual';
   amount: number;
   debit: string;
   credit: string;
   productName?: string;
   quantity?: number;
   unitCost?: number;
+  partnerName?: string;
 }
 
 interface Partner {
@@ -64,6 +66,17 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
 
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
   const totalCapital = partners.reduce((sum, p) => sum + p.capital, 0);
+
+  const totalLosses = transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0);
+  const totalGains = transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0);
+
+  // Cash Flow Statement calculation
+  const totalInitialCapital = partners.reduce((sum, p) => sum + p.capital, 0);
+  const totalCashIn = transactions.filter(t => t.type === 'sale' || t.type === 'gain').reduce((sum, t) => sum + t.amount, 0) + totalInitialCapital;
+  const totalCashOut = transactions.filter(t => t.type === 'purchase' || t.type === 'expense' || t.type === 'loss' || t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+  const netCashFlow = totalCashIn - totalCashOut;
+
+  const retainedEarnings = grossProfit + totalGains - totalExpenses;
 
   const handleClose = () => {
     // Perform closing entries
@@ -127,14 +140,24 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           ))}
           
           <tr className="border-b">
-            <td className="py-2">Revenue</td>
+            <td className="py-2">Gross Profit</td>
             <td className="text-right py-2">-</td>
-            <td className="text-right py-2">${totalRevenue.toFixed(2)}</td>
+            <td className="text-right py-2">${grossProfit.toFixed(2)}</td>
           </tr>
           <tr className="border-b">
             <td className="py-2">Expenses</td>
             <td className="text-right py-2">${totalExpenses.toFixed(2)}</td>
             <td className="text-right py-2">-</td>
+          </tr>
+          <tr className="border-b">
+            <td className="py-2">Losses</td>
+            <td className="text-right py-2">${totalLosses.toFixed(2)}</td>
+            <td className="text-right py-2">-</td>
+          </tr>
+          <tr className="border-b">
+            <td className="py-2">Gains</td>
+            <td className="text-right py-2">-</td>
+            <td className="text-right py-2">${totalGains.toFixed(2)}</td>
           </tr>
           {partners.map((partner) => (
             <tr key={partner.name} className="border-b">
@@ -146,10 +169,10 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           <tr className="border-t-2 font-bold">
             <td className="py-2">Total</td>
             <td className="text-right py-2">
-              ${(cash + totalInventoryValue + totalExpenses).toFixed(2)}
+              ${(cash + totalInventoryValue + totalExpenses + totalLosses).toFixed(2)}
             </td>
             <td className="text-right py-2">
-              ${(totalRevenue + totalCapital).toFixed(2)}
+              ${(grossProfit + totalCapital + totalGains).toFixed(2)}
             </td>
           </tr>
         </tbody>
@@ -164,6 +187,10 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
         <div className="flex justify-between">
           <span>Sales Revenue</span>
           <span>${totalRevenue.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Gains</span>
+          <span>${transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
         </div>
       </div>
       
@@ -209,29 +236,33 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <span>Inventory</span>
             <span>${totalInventoryValue.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between font-semibold border-t pt-2">
-            <span>Total Assets</span>
-            <span>${(cash + totalInventoryValue).toFixed(2)}</span>
+          <div className="border-t pt-2 font-semibold">
+            <div className="flex justify-between">
+              <span>Total Assets</span>
+              <span>${(cash + totalInventoryValue).toFixed(2)}</span>
+            </div>
           </div>
         </div>
       </div>
       
       <div>
-        <h3 className="font-semibold mb-4">Equity</h3>
+        <h3 className="font-semibold mb-4">Liabilities & Equity</h3>
         <div className="space-y-2">
+          <div className="flex justify-between">
+            <span>Retained Earnings</span>
+            <span>${retainedEarnings.toFixed(2)}</span>
+          </div>
           {partners.map((partner) => (
             <div key={partner.name} className="flex justify-between">
               <span>{partner.name} Capital</span>
               <span>${partner.capital.toFixed(2)}</span>
             </div>
           ))}
-          <div className="flex justify-between">
-            <span>Retained Earnings</span>
-            <span>${netIncome.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between font-semibold border-t pt-2">
-            <span>Total Equity</span>
-            <span>${(totalCapital + netIncome).toFixed(2)}</span>
+          <div className="border-t pt-2 font-semibold">
+            <div className="flex justify-between">
+              <span>Total Liabilities & Equity</span>
+              <span>${(retainedEarnings + totalCapital).toFixed(2)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -247,8 +278,8 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <th className="text-left py-2">Description</th>
             <th className="text-left py-2">Type</th>
             <th className="text-right py-2">Amount</th>
-            <th className="text-left py-2">Debit</th>
-            <th className="text-left py-2">Credit</th>
+            <th className="text-right py-2">Debit</th>
+            <th className="text-right py-2">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -256,10 +287,10 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <tr key={transaction.id} className="border-b">
               <td className="py-2">{transaction.date}</td>
               <td className="py-2">{transaction.description}</td>
-              <td className="py-2 capitalize">{transaction.type}</td>
+              <td className="py-2">{transaction.type}</td>
               <td className="text-right py-2">${transaction.amount.toFixed(2)}</td>
-              <td className="py-2">{transaction.debit}</td>
-              <td className="py-2">{transaction.credit}</td>
+              <td className="text-right py-2">{transaction.debit}</td>
+              <td className="text-right py-2">{transaction.credit}</td>
             </tr>
           ))}
         </tbody>
@@ -277,30 +308,20 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <th className="text-right py-2">Quantity</th>
             <th className="text-right py-2">Unit Cost</th>
             <th className="text-right py-2">Total Value</th>
-            <th className="text-left py-2">Details</th>
           </tr>
         </thead>
         <tbody>
           {inventory.map((item) => (
             <tr key={item.id} className="border-b">
               <td className="py-2">{item.name}</td>
-              <td className="py-2 capitalize">{item.type}</td>
+              <td className="py-2">{item.type}</td>
               <td className="text-right py-2">
                 {item.type === 'oil' ? `${item.grams}g` : item.quantity}
               </td>
               <td className="text-right py-2">${item.unitCost.toFixed(2)}</td>
               <td className="text-right py-2">${item.totalValue.toFixed(2)}</td>
-              <td className="py-2 text-sm text-slate-600">
-                {item.milliliters ? `${item.milliliters}ml` : ''}
-                {item.grams && item.type !== 'oil' ? ` | ${item.grams}g` : ''}
-              </td>
             </tr>
           ))}
-          <tr className="border-t-2 font-bold">
-            <td colSpan={4} className="py-2">Total Inventory Value</td>
-            <td className="text-right py-2">${totalInventoryValue.toFixed(2)}</td>
-            <td></td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -315,99 +336,151 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <th className="text-left py-2">Product</th>
             <th className="text-right py-2">Quantity</th>
             <th className="text-right py-2">Unit Price</th>
-            <th className="text-right py-2">Unit Cost</th>
-            <th className="text-right py-2">Total Revenue</th>
-            <th className="text-right py-2">COGS</th>
-            <th className="text-right py-2">Gross Profit</th>
+            <th className="text-right py-2">Total Amount</th>
           </tr>
         </thead>
         <tbody>
           {transactions
             .filter(t => t.type === 'sale')
             .map((transaction) => {
-              const quantity = transaction.quantity || 1;
-              const unitPrice = transaction.amount / quantity;
-              const unitCost = transaction.unitCost || 0;
-              const cogs = unitCost * quantity;
-              const grossProfit = transaction.amount - cogs;
-              
+              const unitPrice = transaction.quantity ? transaction.amount / transaction.quantity : transaction.amount;
               return (
                 <tr key={transaction.id} className="border-b">
                   <td className="py-2">{transaction.date}</td>
                   <td className="py-2">{transaction.productName || 'Unknown'}</td>
-                  <td className="text-right py-2">{quantity}</td>
+                  <td className="text-right py-2">{transaction.quantity || 1}</td>
                   <td className="text-right py-2">${unitPrice.toFixed(2)}</td>
-                  <td className="text-right py-2">${unitCost.toFixed(2)}</td>
                   <td className="text-right py-2">${transaction.amount.toFixed(2)}</td>
-                  <td className="text-right py-2">${cogs.toFixed(2)}</td>
-                  <td className="text-right py-2">${grossProfit.toFixed(2)}</td>
                 </tr>
               );
             })}
-          <tr className="border-t-2 font-bold">
-            <td colSpan={5} className="py-2">Totals</td>
-            <td className="text-right py-2">${totalRevenue.toFixed(2)}</td>
-            <td className="text-right py-2">${totalCOGS.toFixed(2)}</td>
-            <td className="text-right py-2">${(totalRevenue - totalCOGS).toFixed(2)}</td>
-          </tr>
         </tbody>
       </table>
     </div>
   );
 
+  const renderCashFlowStatement = () => (
+    <div className="space-y-4">
+      <div className="border-b pb-4">
+        <h3 className="font-semibold mb-2">Cash Inflows</h3>
+        <div className="flex justify-between">
+          <span>Sales</span>
+          <span>${transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Gains</span>
+          <span>${transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between font-semibold mt-2">
+          <span>Total Inflows (Operating)</span>
+          <span>${(totalCashIn - totalInitialCapital).toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="border-b pb-4">
+        <h3 className="font-semibold mb-2">Investing Activities</h3>
+        <div className="flex justify-between">
+          <span>Initial Capital (Partners)</span>
+          <span>${totalInitialCapital.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between font-semibold mt-2">
+          <span>Total Investing Inflows</span>
+          <span>${totalInitialCapital.toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="border-b pb-4">
+        <h3 className="font-semibold mb-2">Cash Outflows</h3>
+        <div className="flex justify-between">
+          <span>Purchases</span>
+          <span>${transactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Expenses</span>
+          <span>${transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Losses</span>
+          <span>${transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Withdrawals</span>
+          <span>${transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between font-semibold mt-2">
+          <span>Total Outflows</span>
+          <span>${totalCashOut.toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="font-bold text-lg flex justify-between">
+        <span>Net Cash Flow</span>
+        <span>${netCashFlow.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Financial Statements
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>Financial Statements</DialogTitle>
         </DialogHeader>
         
         <Tabs defaultValue="trial-balance" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList>
             <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
-            <TabsTrigger value="income">Income Statement</TabsTrigger>
+            <TabsTrigger value="income-statement">Income Statement</TabsTrigger>
             <TabsTrigger value="balance-sheet">Balance Sheet</TabsTrigger>
-            <TabsTrigger value="journal">General Journal</TabsTrigger>
-            <TabsTrigger value="inventory">Inventory Ledger</TabsTrigger>
-            <TabsTrigger value="sales">Sales Ledger</TabsTrigger>
+            <TabsTrigger value="general-journal">General Journal</TabsTrigger>
+            <TabsTrigger value="inventory-ledger">Inventory Ledger</TabsTrigger>
+            <TabsTrigger value="sales-ledger">Sales Ledger</TabsTrigger>
+            <TabsTrigger value="cash-flow">Cash Flow Statement</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="trial-balance" className="mt-6">
+          <TabsContent value="trial-balance" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderTrialBalance()}
+            </div>
           </TabsContent>
           
-          <TabsContent value="income" className="mt-6">
+          <TabsContent value="income-statement" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderIncomeStatement()}
+            </div>
           </TabsContent>
           
-          <TabsContent value="balance-sheet" className="mt-6">
+          <TabsContent value="balance-sheet" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderBalanceSheet()}
+            </div>
           </TabsContent>
           
-          <TabsContent value="journal" className="mt-6">
+          <TabsContent value="general-journal" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderGeneralJournal()}
+            </div>
           </TabsContent>
           
-          <TabsContent value="inventory" className="mt-6">
+          <TabsContent value="inventory-ledger" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderInventoryLedger()}
+            </div>
           </TabsContent>
           
-          <TabsContent value="sales" className="mt-6">
+          <TabsContent value="sales-ledger" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
             {renderSalesLedger()}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="cash-flow" className="mt-4">
+            <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+              {renderCashFlowStatement()}
+            </div>
           </TabsContent>
         </Tabs>
         
-        <div className="flex gap-3 pt-4 border-t">
-          <Button onClick={handleClose} className="bg-green-600 hover:bg-green-700">
-            Close Books
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+        <div className="flex justify-end mt-4">
+          <Button onClick={onClose}>
+            Close
           </Button>
         </div>
       </DialogContent>
