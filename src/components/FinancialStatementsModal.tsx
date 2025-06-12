@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 import './financialStatementsScrollbar.css';
+import { Transaction } from '@/types';
 
 interface InventoryItem {
   id: string;
@@ -15,20 +16,6 @@ interface InventoryItem {
   milliliters?: number;
   grams?: number;
   sellingPrice?: number;
-}
-
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create' | 'gain' | 'loss' | 'closing' | 'manual';
-  amount: number;
-  debit: string;
-  credit: string;
-  productName?: string;
-  quantity?: number;
-  unitCost?: number;
-  partnerName?: string;
 }
 
 interface Partner {
@@ -43,19 +30,24 @@ interface FinancialStatementsModalProps {
   transactions: Transaction[];
   cash: number;
   partners: Partner[];
+  onClosingEntries: (entries: Transaction[]) => void;
 }
 
-export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transactions, cash, partners }: FinancialStatementsModalProps) => {
+export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transactions, cash, partners, onClosingEntries }: FinancialStatementsModalProps) => {
   const totalRevenue = transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  const netIncome = totalRevenue - totalExpenses;
-
+  const totalGains = transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0);
+  const totalLosses = transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0);
+  
   // Calculate COGS for sold items
   const totalCOGS = transactions
     .filter(t => t.type === 'sale' && t.unitCost)
     .reduce((sum, t) => sum + (t.unitCost! * (t.quantity || 1)), 0);
 
+  // Calculate net income once at the top level
   const grossProfit = totalRevenue - totalCOGS;
+  const totalprofitability = grossProfit + totalGains;
+  const netIncome = totalprofitability - totalExpenses - totalLosses;
 
   // Group inventory by type for detailed breakdown
   const inventoryByType = inventory.reduce((acc, item) => {
@@ -67,26 +59,168 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.totalValue, 0);
   const totalCapital = partners.reduce((sum, p) => sum + p.capital, 0);
 
-  const totalLosses = transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0);
-  const totalGains = transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0);
-
   // Cash Flow Statement calculation
   const totalInitialCapital = partners.reduce((sum, p) => sum + p.capital, 0);
-  const totalCashIn = transactions.filter(t => t.type === 'sale' || t.type === 'gain').reduce((sum, t) => sum + t.amount, 0) + totalInitialCapital;
-  const totalCashOut = transactions.filter(t => t.type === 'purchase' || t.type === 'expense' || t.type === 'loss' || t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
-  const netCashFlow = totalCashIn - totalCashOut;
+  
+  const renderCashFlowStatement = () => {
+    // OPERATING ACTIVITIES
+    const cashFromSales = transactions
+      .filter(t => t.type === 'sale' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const retainedEarnings = grossProfit + totalGains - totalExpenses;
+    const cashFromGains = transactions
+      .filter(t => t.type === 'gain' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // Purchases (only cash paid out)
+    const cashPaidForPurchases = transactions
+      .filter(t => t.type === 'purchase' )
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const cashPaidForExpenses = transactions
+      .filter(t => t.type === 'expense' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+    const cashPaidForLosses = transactions
+      .filter(t => t.type === 'loss' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const netCashFromOperatingActivities = cashFromSales + cashFromGains - cashPaidForPurchases - cashPaidForExpenses - cashPaidForLosses;
+
+    // INVESTING ACTIVITIES
+    const netCashFromInvestingActivities = 0;
+
+    // FINANCING ACTIVITIES
+    const cashFromCapitalContributions = transactions
+      .filter(t => t.type === 'manual' && t.debit === 'Cash' && t.credit.includes('Capital'))
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const cashPaidForWithdrawals = transactions
+      .filter(t => t.type === 'withdrawal' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const netCashFromFinancingActivities = cashFromCapitalContributions - cashPaidForWithdrawals;
+
+    // NET CHANGE IN CASH
+    const netChangeInCash = netCashFromOperatingActivities + netCashFromInvestingActivities + netCashFromFinancingActivities;
+
+    // Beginning Cash Balance
+    const beginningCashBalance = cash - netChangeInCash;
+
+    console.log('All transactions:', transactions);
+    console.log('Purchase transactions:', transactions.filter(t => t.type === 'purchase'));
+
+    return (
+      <div className="space-y-4">
+        <div className="border-b pb-4">
+          <h3 className="font-semibold mb-2">Cash Flow from Operating Activities</h3>
+          <div className="flex justify-between">
+            <span>Cash from Sales</span>
+            <span>${(Number(cashFromSales) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash from Gains</span>
+            <span>${(Number(cashFromGains) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash Paid for Purchases</span>
+            <span>${(Number(cashPaidForPurchases) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash Paid for Expenses</span>
+            <span>${(Number(cashPaidForExpenses) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash Paid for Losses</span>
+            <span>${(Number(cashPaidForLosses) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-semibold mt-2">
+            <span>Net Cash Flow from Operating Activities</span>
+            <span>${(Number(netCashFromOperatingActivities) || 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="border-b pb-4">
+          <h3 className="font-semibold mb-2">Cash Flow from Investing Activities</h3>
+          <div className="flex justify-between">
+            <span>No investing activities for this period</span>
+            <span>${(Number(netCashFromInvestingActivities) || 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="border-b pb-4">
+          <h3 className="font-semibold mb-2">Cash Flow from Financing Activities</h3>
+          <div className="flex justify-between">
+            <span>Capital Contributions</span>
+            <span>${(Number(cashFromCapitalContributions) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash Paid for Withdrawals</span>
+            <span>${(Number(cashPaidForWithdrawals) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-semibold mt-2">
+            <span>Net Cash Flow from Financing Activities</span>
+            <span>${(Number(netCashFromFinancingActivities) || 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="flex justify-between">
+            <span>Beginning Cash Balance</span>
+            <span>${(Number(beginningCashBalance) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg mt-2">
+            <span>Net Change in Cash</span>
+            <span>${(Number(netChangeInCash) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg mt-2">
+            <span>Ending Cash Balance</span>
+            <span>${(Number(cash) || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const handleClose = () => {
     // Perform closing entries
     const closingDate = new Date().toLocaleDateString();
+    
+    // Create closing entries using the netIncome calculated at the top
+    const closingEntries: Transaction[] = [
+      // Close Net Income to Income Summary
+      {
+        id: `closing-net-income-${Date.now()}`,
+        date: closingDate,
+        type: 'closing',
+        description: 'Closing Entry - Net Income to Income Summary',
+        amount: Math.abs(netIncome),
+        debit: netIncome > 0 ? 'Net Income' : 'Income Summary',
+        credit: netIncome > 0 ? 'Income Summary' : 'Net Income'
+      },
+      // Close Income Summary to Partner Capital
+      {
+        id: `closing-income-summary-${Date.now()}`,
+        date: closingDate,
+        type: 'closing',
+        description: 'Closing Entry - Income Summary to Partner Capital',
+        amount: Math.abs(netIncome),
+        debit: netIncome > 0 ? 'Income Summary' : 'Partner Capital',
+        credit: netIncome > 0 ? 'Partner Capital' : 'Income Summary'
+      }
+    ];
+
+    // Log closing entries
     console.log(`Closing entries for ${closingDate}:`);
     console.log(`Revenue: $${totalRevenue.toFixed(2)}`);
+    console.log(`Gains: $${totalGains.toFixed(2)}`);
     console.log(`Expenses: $${totalExpenses.toFixed(2)}`);
+    console.log(`Losses: $${totalLosses.toFixed(2)}`);
     console.log(`Net Income: $${netIncome.toFixed(2)}`);
     console.log(`Closing completed - books are closed for the period`);
     
+    // Pass closing entries to parent component
+    onClosingEntries(closingEntries);
     onClose();
   };
 
@@ -188,10 +322,6 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           <span>Sales Revenue</span>
           <span>${totalRevenue.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Gains</span>
-          <span>${transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
       </div>
       
       <div className="border-b pb-4">
@@ -200,22 +330,34 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           <span>COGS</span>
           <span>${totalCOGS.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between font-semibold mt-2">
+        <div className="flex justify-between font-semibold">
           <span>Gross Profit</span>
           <span>${grossProfit.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Gains</span>
+          <span>${totalGains.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Total Profitability</span>
+          <span><h3>${totalprofitability.toFixed(2)}</h3></span>
         </div>
       </div>
       
       <div className="border-b pb-4">
         <h3 className="font-semibold mb-2">Operating Expenses</h3>
         <div className="flex justify-between">
-          <span>Total Expenses</span>
+          <span>Expenses</span>
           <span>${totalExpenses.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Losses</span>
+          <span>${totalLosses.toFixed(2)}</span>
         </div>
       </div>
       
-      <div className="font-bold text-lg">
-        <div className="flex justify-between">
+      <div className="border-t pt-4">
+        <div className="flex justify-between font-bold">
           <span>Net Income</span>
           <span>${netIncome.toFixed(2)}</span>
         </div>
@@ -238,8 +380,8 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           </div>
           <div className="border-t pt-2 font-semibold">
             <div className="flex justify-between">
-              <span>Total Assets</span>
-              <span>${(cash + totalInventoryValue).toFixed(2)}</span>
+            <span>Total Assets</span>
+            <span>${(cash + totalInventoryValue).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -250,7 +392,7 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>Retained Earnings</span>
-            <span>${retainedEarnings.toFixed(2)}</span>
+            <span>${netIncome.toFixed(2)}</span>
           </div>
           {partners.map((partner) => (
             <div key={partner.name} className="flex justify-between">
@@ -259,10 +401,10 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             </div>
           ))}
           <div className="border-t pt-2 font-semibold">
-            <div className="flex justify-between">
+          <div className="flex justify-between">
               <span>Total Liabilities & Equity</span>
-              <span>${(retainedEarnings + totalCapital).toFixed(2)}</span>
-            </div>
+              <span>${(netIncome + totalCapital).toFixed(2)}</span>
+          </div>
           </div>
         </div>
       </div>
@@ -359,64 +501,6 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
     </div>
   );
 
-  const renderCashFlowStatement = () => (
-    <div className="space-y-4">
-      <div className="border-b pb-4">
-        <h3 className="font-semibold mb-2">Cash Inflows</h3>
-        <div className="flex justify-between">
-          <span>Sales</span>
-          <span>${transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Gains</span>
-          <span>${transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between font-semibold mt-2">
-          <span>Total Inflows (Operating)</span>
-          <span>${(totalCashIn - totalInitialCapital).toFixed(2)}</span>
-        </div>
-      </div>
-      <div className="border-b pb-4">
-        <h3 className="font-semibold mb-2">Investing Activities</h3>
-        <div className="flex justify-between">
-          <span>Initial Capital (Partners)</span>
-          <span>${totalInitialCapital.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between font-semibold mt-2">
-          <span>Total Investing Inflows</span>
-          <span>${totalInitialCapital.toFixed(2)}</span>
-        </div>
-      </div>
-      <div className="border-b pb-4">
-        <h3 className="font-semibold mb-2">Cash Outflows</h3>
-        <div className="flex justify-between">
-          <span>Purchases</span>
-          <span>${transactions.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Expenses</span>
-          <span>${transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Losses</span>
-          <span>${transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Withdrawals</span>
-          <span>${transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between font-semibold mt-2">
-          <span>Total Outflows</span>
-          <span>${totalCashOut.toFixed(2)}</span>
-        </div>
-      </div>
-      <div className="font-bold text-lg flex justify-between">
-        <span>Net Cash Flow</span>
-        <span>${netCashFlow.toFixed(2)}</span>
-      </div>
-    </div>
-  );
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-5xl">
@@ -435,43 +519,43 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <TabsTrigger value="cash-flow">Cash Flow Statement</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="trial-balance" className="mt-4">
+          <TabsContent value="trial-balance">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderTrialBalance()}
+              {renderTrialBalance()}
             </div>
           </TabsContent>
           
-          <TabsContent value="income-statement" className="mt-4">
+          <TabsContent value="income-statement">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderIncomeStatement()}
+              {renderIncomeStatement()}
             </div>
           </TabsContent>
           
-          <TabsContent value="balance-sheet" className="mt-4">
+          <TabsContent value="balance-sheet">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderBalanceSheet()}
+              {renderBalanceSheet()}
             </div>
           </TabsContent>
           
-          <TabsContent value="general-journal" className="mt-4">
+          <TabsContent value="general-journal">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderGeneralJournal()}
+              {renderGeneralJournal()}
             </div>
           </TabsContent>
           
-          <TabsContent value="inventory-ledger" className="mt-4">
+          <TabsContent value="inventory-ledger">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderInventoryLedger()}
+              {renderInventoryLedger()}
             </div>
           </TabsContent>
           
-          <TabsContent value="sales-ledger" className="mt-4">
+          <TabsContent value="sales-ledger">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {renderSalesLedger()}
+              {renderSalesLedger()}
             </div>
           </TabsContent>
           
-          <TabsContent value="cash-flow" className="mt-4">
+          <TabsContent value="cash-flow">
             <div className="bg-card rounded-lg p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
               {renderCashFlowStatement()}
             </div>

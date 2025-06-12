@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,38 +45,110 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
     e.preventDefault();
     let transactionData;
     if (type === 'sale') {
-      // Send array of sale items
+      console.log('Sale Items before processing:', saleItems);
+      
+      // Validate that at least one product is selected
+      if (saleItems.length === 0 || !saleItems[0].productName) {
+        throw new Error('Please select at least one product to sell');
+      }
+
+      // Process each sale item
       transactionData = saleItems.map(item => {
+        console.log('Processing sale item:', item);
+        
         const selectedProduct = inventory.find(p => p.name === item.productName && p.type === 'created');
-        if (!selectedProduct) throw new Error('Selected product not found');
-        const saleAmount = parseFloat(item.quantity) * selectedProduct.sellingPrice;
-        const boxAmount = item.isBoxed ? parseFloat(item.boxPrice || '0') : 0;
-        const totalSaleAmount = saleAmount + boxAmount;
+        console.log('Selected product found:', selectedProduct);
+        
+        if (!selectedProduct) {
+          throw new Error(`Product "${item.productName}" not found in inventory`);
+        }
+        
+        if (typeof selectedProduct.sellingPrice !== 'number' || isNaN(selectedProduct.sellingPrice)) {
+          throw new Error(`Please set a selling price for ${item.productName}`);
+        }
+        
+        const quantity = parseFloat(item.quantity || '0');
+        const sellingPrice = selectedProduct.sellingPrice;
+        const boxPrice = item.isBoxed ? parseFloat(item.boxPrice || '0') : 0;
+        
+        if (isNaN(quantity) || quantity <= 0) {
+          throw new Error(`Invalid quantity for ${item.productName}. Please enter a valid number greater than 0.`);
+        }
+        
+        if (selectedProduct.quantity < quantity) {
+          throw new Error(`Not enough ${item.productName} in stock. Available: ${selectedProduct.quantity}`);
+        }
+        
+        if (item.isBoxed) {
+          if (isNaN(boxPrice) || boxPrice < 0) {
+            throw new Error(`Invalid box price for ${item.productName}. Please enter a valid number.`);
+          }
+          
+          const boxItem = inventory.find(p => p.type === 'box');
+          if (!boxItem || boxItem.quantity < quantity) {
+            throw new Error(`Not enough boxes in stock. Available: ${boxItem?.quantity || 0}`);
+          }
+        }
+        
+        const saleAmount = quantity * sellingPrice;
+        const totalSaleAmount = saleAmount + boxPrice;
+        
+        console.log('Calculated amounts:', {
+          quantity,
+          sellingPrice,
+          boxPrice,
+          saleAmount,
+          totalSaleAmount
+        });
+        
+        if (isNaN(totalSaleAmount) || totalSaleAmount <= 0) {
+          throw new Error(`Invalid sale amount calculated for ${item.productName}. Please check the input values.`);
+        }
+        
         return {
           type: 'sale',
-          description: `Sold ${item.quantity} ${item.productName}${item.isBoxed ? ' (boxed)' : ''}`,
+          description: `Sold ${quantity} ${item.productName}${item.isBoxed ? ' (boxed)' : ''}`,
           amount: totalSaleAmount,
           debit: `Cash $${totalSaleAmount.toFixed(2)}`,
           credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
           productName: item.productName,
-          quantity: parseFloat(item.quantity),
+          quantity: quantity,
           isBoxed: item.isBoxed,
-          boxPrice: item.isBoxed ? parseFloat(item.boxPrice || '0') : 0,
-          unitCost: selectedProduct.unitCost
+          boxPrice: boxPrice,
+          unitCost: selectedProduct.unitCost,
+          paymentMethod: formData.paymentMethod || 'cash'
         };
       });
+      
+      console.log('Final transaction data:', transactionData);
     } else {
     switch (type) {
       case 'purchase':
-        let totalAmount = 0;
-        let quantity = 0;
-        
-        if (formData.productType === 'oil') {
-          quantity = parseFloat(formData.grams);
-          totalAmount = quantity * parseFloat(formData.price);
-        } else {
-          quantity = parseFloat(formData.quantity);
-          totalAmount = quantity * parseFloat(formData.price);
+          console.log('Purchase formData before processing:', formData);
+          
+          // Safely parse all numeric values with defaults
+          const quantity = formData.productType === 'oil' 
+            ? parseFloat(formData.grams || '0')
+            : parseFloat(formData.quantity || '0');
+          const price = parseFloat(formData.price || '0');
+          
+          // Calculate total amount with safe defaults
+          const totalAmount = quantity * price;
+          
+          console.log('Calculated purchase amounts:', {
+            quantity,
+            price,
+            totalAmount
+          });
+          
+          // Validate calculated amount
+          if (isNaN(totalAmount) || totalAmount <= 0) {
+            console.error('Invalid purchase amount calculated:', {
+              quantity,
+              price,
+              totalAmount
+            });
+            throw new Error('Invalid purchase amount calculated. Please check the input values.');
         }
         
         transactionData = {
@@ -87,52 +159,76 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           credit: `Cash $${totalAmount.toFixed(2)}`,
           productType: formData.productType,
           productName: formData.productName,
-          quantity: formData.productType === 'oil' ? 1 : quantity,
-          grams: formData.productType === 'oil' ? parseFloat(formData.grams) : undefined,
-          milliliters: formData.milliliters ? parseFloat(formData.milliliters) : undefined,
-          unitCost: parseFloat(formData.price)
+          quantity: formData.productType === 'oil' ? parseFloat(formData.grams || '0') : quantity,
+          grams: formData.productType === 'oil' ? parseFloat(formData.grams || '0') : undefined,
+          milliliters: formData.milliliters ? parseFloat(formData.milliliters || '0') : undefined,
+          unitCost: price
         };
         break;
+          
       case 'expense':
+          const expenseAmount = parseFloat(formData.amount || '0');
+          if (isNaN(expenseAmount) || expenseAmount <= 0) {
+            throw new Error('Invalid expense amount. Please enter a valid number.');
+          }
         transactionData = {
           type: 'expense',
           description: formData.description,
-          amount: parseFloat(formData.amount),
-          debit: `Expenses $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`
+            amount: expenseAmount,
+            debit: `Expenses $${expenseAmount.toFixed(2)}`,
+            credit: `Cash $${expenseAmount.toFixed(2)}`
         };
         break;
+          
       case 'withdrawal':
+          const withdrawalAmount = parseFloat(formData.amount || '0');
+          if (isNaN(withdrawalAmount) || withdrawalAmount <= 0) {
+            throw new Error('Invalid withdrawal amount. Please enter a valid number.');
+          }
         transactionData = {
           type: 'withdrawal',
           description: `Capital withdrawal by ${formData.partnerName}`,
-          amount: parseFloat(formData.amount),
-          debit: `${formData.partnerName} Capital $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`,
+            amount: withdrawalAmount,
+            debit: `${formData.partnerName} Capital $${withdrawalAmount.toFixed(2)}`,
+            credit: `Cash $${withdrawalAmount.toFixed(2)}`,
           partnerName: formData.partnerName
         };
         break;
+          
       case 'gain':
+          const gainAmount = parseFloat(formData.amount || '0');
+          if (isNaN(gainAmount) || gainAmount <= 0) {
+            throw new Error('Invalid gain amount. Please enter a valid number.');
+          }
         transactionData = {
           type: 'gain',
           description: formData.description || 'Business gain',
-          amount: parseFloat(formData.amount),
-          debit: `Cash $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Gain $${parseFloat(formData.amount).toFixed(2)}`
+            amount: gainAmount,
+            debit: `Cash $${gainAmount.toFixed(2)}`,
+            credit: `Gain $${gainAmount.toFixed(2)}`
         };
         break;
+          
       case 'loss':
+          const lossAmount = parseFloat(formData.amount || '0');
+          if (isNaN(lossAmount) || lossAmount <= 0) {
+            throw new Error('Invalid loss amount. Please enter a valid number.');
+          }
         transactionData = {
           type: 'loss',
           description: formData.description || 'Business loss',
-          amount: parseFloat(formData.amount),
-          debit: `Loss $${parseFloat(formData.amount).toFixed(2)}`,
-          credit: `Cash $${parseFloat(formData.amount).toFixed(2)}`
+            amount: lossAmount,
+            debit: `Loss $${lossAmount.toFixed(2)}`,
+            credit: `Cash $${lossAmount.toFixed(2)}`
         };
         break;
     }
     }
+    
+    console.log('Submitting transaction data:', transactionData);
     onSubmit(transactionData);
+    
+    // Reset form data
     setSaleItems([{ productName: '', quantity: '', isBoxed: false, boxPrice: '', price: '' }]);
     setFormData({
       productType: '',

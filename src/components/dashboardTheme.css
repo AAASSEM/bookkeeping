@@ -1,66 +1,269 @@
+/* Theme Variables */
 :root {
-    --color-bg-main: #000000;
-    --color-bg-card: #0a0a0a;
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #a1a1aa;
-    --color-accent: #e0115f;
-    --color-success: #22c55e;
-    --color-danger: #dc143c;
-    --color-warning: #f59e42;
-    --color-row-hover: #1a1a1a;
-    --color-border: #1a1a1a;
-    --color-input-bg: #0a0a0a;
-    --color-button-hover: #b01050;
-  }
-  
-  .bg-main {
-    background: var(--color-bg-main);
-  }
-  .bg-card {
-    background: var(--color-bg-card);
-  }
-  .text-primary {
-    color: var(--color-text-primary);
-  }
-  .text-secondary {
-    color: var(--color-text-secondary);
-  }
-  .text-accent {
-    color: var(--color-accent);
-  }
-  .text-success {
-    color: var(--color-success);
-  }
-  .text-danger {
-    color: var(--color-danger);
-  }
-  .text-warning {
-    color: var(--color-warning);
-  }
-  .border-default {
-    border-color: var(--color-border);
-  }
-  .input-bg {
-    background: var(--color-input-bg);
-    color: var(--color-text-primary);
-  }
-  .button-primary {
-    background: var(--color-accent);
-    color: #fff;
-  }
-  .button-primary:hover {
-    background: var(--color-button-hover);
-  }
-  .button-secondary {
-    background: var(--color-bg-card);
-    color: var(--color-text-primary);
-  }
-  .button-secondary:hover {
-    background: var(--color-row-hover);
-  }
-  .table-row-hover:hover {
-    background: var(--color-row-hover);
-  }
-  .divider {
-    border-color: var(--color-border);
-  }
+  /* Light Mode Colors (default) */
+  --background: 0 0% 97.3% !important; /* hsl for #F8F9FA */
+  --foreground: 210 20% 16.5% !important; /* hsl for #212529 */
+  --card: 0 0% 100% !important; /* hsl for #FFFFFF */
+  --card-foreground: 210 20% 16.5% !important; /* same as foreground */
+
+  --primary: 215 100% 31.2% !important; /* hsl for #007BFF */
+  --primary-foreground: 0 0% 100% !important; /* hsl for white text on primary */
+
+  --secondary: 210 14.3% 86.8% !important; /* hsl for a light grey for secondary components */
+  --secondary-foreground: 210 9.2% 46.1% !important; /* hsl for #6C757D */
+
+  --destructive: 355 78% 56.7% !important; /* hsl for #DC3545 */
+  --destructive-foreground: 0 0% 100% !important;
+
+  --muted: 210 14.3% 86.8% !important; /* hsl for light grey muted background */
+  --muted-foreground: 210 9.2% 46.1% !important; /* hsl for #6C757D */
+
+  --accent: 215 100% 31.2% !important; /* hsl for accent, same as primary for now */
+  --accent-foreground: 0 0% 100% !important;
+
+  --popover: 0 0% 100% !important; /* hsl for popover background */
+  --popover-foreground: 210 20% 16.5% !important; /* hsl for popover text */
+
+  --border: 210 14.3% 86.8% !important; /* hsl for #DEE2E6 */
+  --input: 0 0% 100% !important; /* hsl for input background */
+  --ring: 215 100% 31.2% !important; /* hsl for ring, same as primary */
+
+  --radius: 0.5rem !important; /* default border radius */
+
+  /* Custom variables not directly mapped by shadcn/ui defaults */
+  --success: 120 60% 40% !important; /* hsl for #28A745 */
+  --warning: 40 100% 50% !important; /* hsl for #FFC107 */
+  --row-hover-bg: 210 14.3% 90% !important; /* hsl for #E9ECEF */
+  --button-hover-accent: 215 100% 20% !important; /* hsl for #0056B3 */
+}
+
+.dark-mode {
+  /* Dark Mode Colors */
+  --background: 0 0% 0% !important; /* Deep Dark Black */
+  --foreground: 0 0% 97.3% !important; /* hsl for #F8F9FA */
+  --card: 210 14% 23.5% !important; /* hsl for #343A40 */
+  --card-foreground: 0 0% 97.3% !important; /* same as foreground */
+
+  --primary: 215 100% 60% !important; /* hsl for #66B2FF */
+  --primary-foreground: 210 16% 14% !important; /* hsl for dark text on primary */
+
+  --secondary: 210 14% 23.5% !important; /* same as card for secondary components */
+  --secondary-foreground: 210 10% 70% !important; /* hsl for #ADB5BD */
+
+  --destructive: 355 78% 56.7% !important; /* hsl for #DC3545 */
+  --destructive-foreground: 0 0% 97.3% !important;
+
+  --muted: 210 14% 23.5% !important; /* hsl for muted background */
+  --muted-foreground: 210 10% 70% !important; /* hsl for #ADB5BD */
+
+  --accent: 215 100% 60% !important; /* hsl for accent, same as primary for now */
+  --accent-foreground: 210 16% 14% !important;
+
+  --popover: 210 14% 23.5% !important; /* hsl for popover background */
+  --popover-foreground: 0 0% 97.3% !important; /* hsl for popover text */
+
+  --border: 210 10% 30% !important; /* hsl for #4F525A */
+  --input: 210 14% 23.5% !important; /* hsl for input background */
+  --ring: 215 100% 60% !important; /* hsl for ring, same as primary */
+
+  /* Custom variables */
+  --success: 120 60% 40% !important; /* hsl for #28A745 */
+  --warning: 40 100% 50% !important; /* hsl for #FFC107 */
+  --row-hover-bg: 210 10% 30% !important; /* hsl for #495057 */
+  --button-hover-accent: 215 100% 50% !important; /* hsl for #338DFF */
+}
+
+/* Base Styles */
+body {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  transition: background-color 0.3s ease, color 0.3s ease !important;
+}
+
+/* Card Styles */
+.bg-card {
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Text Colors */
+.text-primary {
+  color: hsl(var(--foreground)) !important;
+}
+
+.text-secondary {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.text-accent {
+  color: hsl(var(--primary)) !important; /* Accent uses primary color */
+}
+
+.text-success {
+  color: hsl(var(--success)) !important;
+}
+
+.text-danger {
+  color: hsl(var(--destructive)) !important;
+}
+
+.text-warning {
+  color: hsl(var(--warning)) !important;
+}
+
+/* Border Colors */
+.border-default {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Background Colors */
+.bg-main {
+  background-color: hsl(var(--background)) !important;
+}
+
+.bg-secondary-bg {
+  background-color: hsl(var(--card)) !important; /* Table headers, etc. */
+}
+
+/* Table Styles */
+.hover\:bg-row-hover:hover {
+  background-color: hsl(var(--row-hover-bg)) !important;
+}
+
+/* Form Elements */
+input, select, textarea {
+  background-color: hsl(var(--input)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Button Styles */
+.Button {
+  transition: background-color 0.2s ease !important;
+}
+
+.Button-primary {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.Button-primary:hover {
+  background-color: hsl(var(--button-hover-accent)) !important;
+}
+
+.Button-secondary {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.Button-secondary:hover {
+  background-color: hsl(var(--row-hover-bg)) !important;
+}
+
+/* Custom shadcn/ui button variants which might not be directly using Button-primary/secondary */
+.Button[variant="outline"] {
+  background-color: transparent !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+.Button[variant="outline"]:hover {
+  background-color: hsl(var(--row-hover-bg)) !important;
+}
+
+.Button[variant="ghost"] {
+  background-color: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+.Button[variant="ghost"]:hover {
+  background-color: hsl(var(--row-hover-bg)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.Button[variant="destructive"] {
+  background-color: hsl(var(--destructive)) !important;
+  color: hsl(var(--destructive-foreground)) !important;
+}
+.Button[variant="destructive"]:hover {
+  /* Maintain destructive color on hover, slightly darker if needed or just opacity */
+  background-color: hsl(var(--destructive)) !important;
+  opacity: 0.9 !important;
+}
+
+
+/* Transparent Background based on primary color */
+.bg-primary\/20 {
+  /* color-mix is the most robust way, requires modern browser support */
+  background-color: color-mix(in srgb, hsl(var(--primary)) 20%, transparent) !important;
+}
+
+/* Transitions for all elements */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Custom Scrollbar for Financial Statements (already present, ensuring it uses new vars) */
+.custom-scrollbar {
+scrollbar-width: thin !important;
+scrollbar-color: hsl(var(--primary)) hsl(var(--border)) !important; /* Uses primary for thumb, border for track */
+}
+.custom-scrollbar::-webkit-scrollbar {
+width: 8px !important;
+border-radius: 8px !important;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+background: hsl(var(--primary)) !important;
+border-radius: 8px !important;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+background: hsl(var(--border)) !important;
+border-radius: 8px !important;
+}
+
+/* Specific text color override for header in dark mode */
+.dark-mode .header-title {
+  color: hsl(var(--destructive)) !important;
+}
+.dark-mode .header-subtitle {
+  color: hsl(var(--destructive)) !important;
+}
+
+/* Specific text color override for header in dark mode */
+.dark-mode .text-primary {
+  color: hsl(var(--destructive)) !important;
+}
+
+.dark-mode .text-secondary {
+  color: hsl(var(--destructive)) !important;
+  opacity: 0.8;
+}
+
+/* Override header text colors in dark mode */
+.dark-mode .header-title {
+  color: hsl(var(--destructive)) !important;
+}
+
+.dark-mode .header-subtitle {
+  color: hsl(var(--destructive)) !important;
+  opacity: 0.8;
+}
+
+/* Specific text color override for header in dark mode */
+.dark-mode .text-primary {
+    color: hsl(var(--destructive)) !important;
+}
+
+.dark-mode .text-secondary {
+    color: hsl(var(--destructive)) !important;
+    opacity: 0.8;
+}
+
+/* Override header text colors in dark mode */
+.dark-mode h1.text-3xl.font-bold.text-primary {
+    color: hsl(var(--destructive)) !important;
+}
+
+.dark-mode p.text-secondary {
+    color: hsl(var(--destructive)) !important;
+    opacity: 0.8;
+}
