@@ -44,8 +44,8 @@
   --card: 210 14% 23.5% !important; /* hsl for #343A40 */
   --card-foreground: 0 0% 97.3% !important; /* same as foreground */
 
-  --primary: 215 100% 60% !important; /* hsl for #66B2FF */
-  --primary-foreground: 210 16% 14% !important; /* hsl for dark text on primary */
+  --primary: 182 85% 35% !important; /* hsl for Phthalo Green */
+  --primary-foreground: 0 0% 0% !important; /* hsl for black text on phthalo green */
 
   --secondary: 210 14% 23.5% !important; /* same as card for secondary components */
   --secondary-foreground: 210 10% 70% !important; /* hsl for #ADB5BD */
@@ -56,21 +56,22 @@
   --muted: 210 14% 23.5% !important; /* hsl for muted background */
   --muted-foreground: 210 10% 70% !important; /* hsl for #ADB5BD */
 
-  --accent: 215 100% 60% !important; /* hsl for accent, same as primary for now */
-  --accent-foreground: 210 16% 14% !important;
+  --accent: 182 85% 35% !important; /* hsl for accent, same as primary (phthalo green) */
+  --accent-foreground: 0 0% 0% !important;
 
   --popover: 210 14% 23.5% !important; /* hsl for popover background */
   --popover-foreground: 0 0% 97.3% !important; /* hsl for popover text */
 
   --border: 210 10% 30% !important; /* hsl for #4F525A */
   --input: 210 14% 23.5% !important; /* hsl for input background */
-  --ring: 215 100% 60% !important; /* hsl for ring, same as primary */
+  --ring: 182 85% 35% !important; /* hsl for ring, same as primary (phthalo green) */
 
   /* Custom variables */
   --success: 120 60% 40% !important; /* hsl for #28A745 */
   --warning: 40 100% 50% !important; /* hsl for #FFC107 */
   --row-hover-bg: 210 10% 30% !important; /* hsl for #495057 */
   --button-hover-accent: 215 100% 50% !important; /* hsl for #338DFF */
+  --phthalo-green: 182 85% 35% !important; /* Phthalo Green for dark mode text */
 }
 
 /* Base Styles */
@@ -138,27 +139,40 @@ input, select, textarea {
 }
 
 /* Button Styles */
-.Button {
+.Button, .button-primary, .button-secondary {
   transition: background-color 0.2s ease !important;
 }
 
-.Button-primary {
+/* Light mode - All buttons use consistent primary styling */
+.Button-primary, .button-primary,
+.Button-secondary, .button-secondary {
   background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border: 1px solid hsl(var(--primary)) !important;
+}
+
+.Button-primary:hover, .button-primary:hover,
+.Button-secondary:hover, .button-secondary:hover {
+  background-color: hsl(var(--button-hover-accent)) !important;
   color: hsl(var(--primary-foreground)) !important;
 }
 
-.Button-primary:hover {
-  background-color: hsl(var(--button-hover-accent)) !important;
+/* Dark mode button overrides - All buttons use consistent phthalo green */
+.dark-mode .Button-primary, 
+.dark-mode .button-primary,
+.dark-mode .Button-secondary, 
+.dark-mode .button-secondary {
+  background-color: hsl(var(--phthalo-green)) !important;
+  color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--phthalo-green)) !important;
 }
 
-.Button-secondary {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--foreground)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-}
-
-.Button-secondary:hover {
-  background-color: hsl(var(--row-hover-bg)) !important;
+.dark-mode .Button-primary:hover, 
+.dark-mode .button-primary:hover,
+.dark-mode .Button-secondary:hover, 
+.dark-mode .button-secondary:hover {
+  background-color: hsl(182 85% 30%) !important; /* Darker phthalo green on hover */
+  color: hsl(var(--background)) !important;
 }
 
 /* Custom shadcn/ui button variants which might not be directly using Button-primary/secondary */
@@ -193,8 +207,21 @@ input, select, textarea {
 
 /* Transparent Background based on primary color */
 .bg-primary\/20 {
-  /* color-mix is the most robust way, requires modern browser support */
-  background-color: color-mix(in srgb, hsl(var(--primary)) 20%, transparent) !important;
+  /* Enhanced visibility - use more solid background in light mode */
+  background-color: hsl(var(--primary)) !important;
+  opacity: 0.1 !important;
+  border: 1px solid hsl(var(--primary)) !important;
+}
+
+/* Better styling for cost breakdown sections */
+.bg-primary\/20 {
+  background-color: hsl(215 100% 95%) !important; /* Light blue background in light mode */
+  border: 1px solid hsl(var(--primary)) !important;
+  opacity: 1 !important;
+}
+
+.bg-primary\/20 .text-primary-foreground {
+  color: hsl(var(--primary)) !important; /* Use primary color for text instead of primary-foreground */
 }
 
 /* Transitions for all elements */
@@ -220,50 +247,356 @@ background: hsl(var(--border)) !important;
 border-radius: 8px !important;
 }
 
-/* Specific text color override for header in dark mode */
+/* Phthalo Green text colors for dark mode */
 .dark-mode .header-title {
-  color: hsl(var(--destructive)) !important;
+  color: hsl(var(--phthalo-green)) !important;
 }
 .dark-mode .header-subtitle {
-  color: hsl(var(--destructive)) !important;
-}
-
-/* Specific text color override for header in dark mode */
-.dark-mode .text-primary {
-  color: hsl(var(--destructive)) !important;
-}
-
-.dark-mode .text-secondary {
-  color: hsl(var(--destructive)) !important;
+  color: hsl(var(--phthalo-green)) !important;
   opacity: 0.8;
 }
 
-/* Override header text colors in dark mode */
-.dark-mode .header-title {
-  color: hsl(var(--destructive)) !important;
-}
-
-.dark-mode .header-subtitle {
-  color: hsl(var(--destructive)) !important;
-  opacity: 0.8;
-}
-
-/* Specific text color override for header in dark mode */
 .dark-mode .text-primary {
-    color: hsl(var(--destructive)) !important;
+  color: hsl(var(--phthalo-green)) !important;
 }
 
 .dark-mode .text-secondary {
-    color: hsl(var(--destructive)) !important;
-    opacity: 0.8;
+  color: hsl(var(--phthalo-green)) !important;
+  opacity: 0.7;
 }
 
 /* Override header text colors in dark mode */
 .dark-mode h1.text-3xl.font-bold.text-primary {
-    color: hsl(var(--destructive)) !important;
+    color: hsl(var(--phthalo-green)) !important;
 }
 
 .dark-mode p.text-secondary {
-    color: hsl(var(--destructive)) !important;
+    color: hsl(var(--phthalo-green)) !important;
     opacity: 0.8;
+}
+
+/* Dark mode modal and dialog overrides */
+.dark-mode .bg-blue-500,
+.dark-mode .bg-blue-600 {
+    background-color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .hover\:bg-blue-600:hover,
+.dark-mode .hover\:bg-blue-700:hover {
+    background-color: hsl(182 85% 30%) !important;
+}
+
+.dark-mode .text-blue-500,
+.dark-mode .text-blue-600 {
+    color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .hover\:text-blue-700:hover {
+    color: hsl(182 85% 30%) !important;
+}
+
+/* Ensure bg-primary uses phthalo green in dark mode */
+.dark-mode .bg-primary {
+    background-color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .hover\:bg-primary\/90:hover {
+    background-color: hsl(182 85% 30%) !important;
+}
+
+/* Override any remaining blue elements in dark mode */
+.dark-mode [class*="blue"]:not([class*="blue-gray"]):not([class*="blue-50"]) {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+}
+
+/* Override red hover effects in dark mode */
+.dark-mode .Button[variant="destructive"]:hover,
+.dark-mode button[variant="destructive"]:hover,
+.dark-mode [class*="destructive"]:hover {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+    opacity: 1 !important;
+}
+
+.dark-mode .hover\:bg-destructive:hover,
+.dark-mode .hover\:bg-red:hover,
+.dark-mode [class*="hover:bg-red"]:hover {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+}
+
+/* Comprehensive red element overrides for dark mode */
+.dark-mode .bg-red-500,
+.dark-mode .bg-red-600,
+.dark-mode .bg-red-700,
+.dark-mode .text-red-500,
+.dark-mode .text-red-600 {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+}
+
+.dark-mode .hover\:bg-red-500:hover,
+.dark-mode .hover\:bg-red-600:hover,
+.dark-mode .hover\:bg-red-700:hover {
+    background-color: hsl(182 85% 30%) !important;
+    color: hsl(var(--background)) !important;
+}
+
+/* Override transaction table hover effects if any */
+.dark-mode .transaction-table tbody tr:hover {
+    background-color: hsl(var(--phthalo-green) / 0.1) !important;
+}
+
+/* Override specific red button hover effects */
+.dark-mode button.bg-red-500:hover,
+.dark-mode button.bg-red-600:hover,
+.dark-mode .btn.bg-red-500:hover,
+.dark-mode .btn.bg-red-600:hover {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+}
+
+/* Specific overrides for common blue classes */
+.dark-mode .bg-blue-50 {
+    background-color: hsl(182 85% 95%) !important;
+}
+
+.dark-mode .bg-blue-100 {
+    background-color: hsl(182 85% 90%) !important;
+}
+
+/* Ensure primary accent colors use phthalo green in dark mode */
+.dark-mode .accent-color,
+.dark-mode .primary-accent,
+.dark-mode .text-primary-foreground {
+    color: hsl(var(--phthalo-green)) !important;
+}
+
+/* Additional comprehensive overrides for dark mode */
+.dark-mode button[class*="primary"],
+.dark-mode .btn-primary,
+.dark-mode [data-state="active"] {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--background)) !important;
+}
+
+/* Catch any missed blue variants */
+.dark-mode .bg-blue-400,
+.dark-mode .bg-blue-700,
+.dark-mode .bg-blue-800 {
+    background-color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .hover\:bg-blue-400:hover,
+.dark-mode .hover\:bg-blue-500:hover,
+.dark-mode .hover\:bg-blue-800:hover {
+    background-color: hsl(182 85% 30%) !important;
+}
+
+/* Dark mode styling for cost breakdown sections */
+.dark-mode .bg-primary\/20 {
+    background-color: hsl(210 14% 25%) !important; /* Solid dark gray background */
+    opacity: 1 !important; /* No transparency */
+    border: 2px solid hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .bg-primary\/20 .text-primary-foreground,
+.dark-mode .bg-primary\/20 p,
+.dark-mode .bg-primary\/20 * {
+    color: hsl(0 0% 95%) !important; /* Bright white text */
+    font-weight: 500 !important; /* Slightly bolder for better visibility */
+}
+
+/* RTL (Arabic) Support */
+.rtl-mode {
+    direction: rtl !important;
+}
+
+.rtl-mode .flex {
+    flex-direction: row-reverse !important;
+}
+
+.rtl-mode .grid {
+    text-align: right !important;
+}
+
+.rtl-mode .text-left {
+    text-align: right !important;
+}
+
+.rtl-mode .text-right {
+    text-align: left !important;
+}
+
+.rtl-mode .mr-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+}
+
+.rtl-mode .ml-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+}
+
+.rtl-mode .justify-between {
+    flex-direction: row-reverse !important;
+}
+
+/* RTL Table Support */
+.rtl-mode table {
+    direction: rtl !important;
+}
+
+.rtl-mode th,
+.rtl-mode td {
+    text-align: right !important;
+}
+
+/* Override specific text alignment classes in RTL mode */
+.rtl-mode .text-right,
+.rtl-mode th.text-right,
+.rtl-mode td.text-right {
+    text-align: left !important;
+}
+
+.rtl-mode .text-left,
+.rtl-mode th.text-left,
+.rtl-mode td.text-left {
+    text-align: right !important;
+}
+
+/* Specific overrides for table headers with higher specificity */
+.rtl-mode table thead th.text-left {
+    text-align: right !important;
+}
+
+.rtl-mode table thead th.text-right {
+    text-align: left !important;
+}
+
+.rtl-mode table tbody td.text-left {
+    text-align: right !important;
+}
+
+.rtl-mode table tbody td.text-right {
+    text-align: left !important;
+}
+
+/* Standardized Transaction Table Structure */
+.transaction-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    table-layout: fixed !important; /* Ensures consistent column widths */
+}
+
+.transaction-table th,
+.transaction-table td {
+    padding: 12px 8px !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+    vertical-align: middle !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Consistent Column Widths */
+.transaction-table th:nth-child(1),
+.transaction-table td:nth-child(1) { width: 15%; } /* Date */
+
+.transaction-table th:nth-child(2),
+.transaction-table td:nth-child(2) { width: 15%; } /* Type */
+
+.transaction-table th:nth-child(3),
+.transaction-table td:nth-child(3) { width: 35%; } /* Description */
+
+.transaction-table th:nth-child(4),
+.transaction-table td:nth-child(4) { width: 15%; } /* Amount */
+
+.transaction-table th:nth-child(5),
+.transaction-table td:nth-child(5) { width: 10%; } /* Debit */
+
+.transaction-table th:nth-child(6),
+.transaction-table td:nth-child(6) { width: 10%; } /* Credit */
+
+/* Typography Consistency */
+.arabic-text {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+.english-text {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif !important;
+    direction: ltr !important;
+    text-align: left !important;
+}
+
+/* Color Scheme Standardization */
+.transaction-table thead {
+    background-color: hsl(var(--secondary)) !important;
+}
+
+.transaction-table thead th {
+    color: hsl(var(--secondary-foreground)) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Alternating row colors */
+.transaction-table tbody tr:nth-child(even) {
+    background-color: hsl(var(--muted) / 0.3) !important;
+}
+
+.transaction-table tbody tr:nth-child(odd) {
+    background-color: hsl(var(--card)) !important;
+}
+
+.transaction-table tbody tr:hover {
+    background-color: hsl(var(--row-hover-bg)) !important;
+    transition: background-color 0.2s ease !important;
+}
+
+/* Text colors for different transaction types */
+.transaction-type-purchase { color: hsl(215 100% 31.2%) !important; }
+.transaction-type-sale { color: hsl(120 60% 40%) !important; }
+.transaction-type-expense { color: hsl(355 78% 56.7%) !important; }
+.transaction-type-withdrawal { color: hsl(40 100% 50%) !important; }
+.transaction-type-gain { color: hsl(120 60% 40%) !important; }
+.transaction-type-loss { color: hsl(355 78% 56.7%) !important; }
+.transaction-type-create { color: hsl(182 85% 35%) !important; }
+
+/* Consistent highlighting for amounts */
+.transaction-amount {
+    font-weight: 600 !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.transaction-debit {
+    color: hsl(355 78% 56.7%) !important; /* Red for debits */
+    font-size: 13px !important;
+}
+
+.transaction-credit {
+    color: hsl(120 60% 40%) !important; /* Green for credits */
+    font-size: 13px !important;
+}
+
+/* RTL-specific overrides for transaction table */
+.rtl-mode.arabic-text .transaction-table {
+    direction: ltr !important; /* Keep table direction LTR for consistent column order */
+}
+
+.rtl-mode.arabic-text .transaction-table th,
+.rtl-mode.arabic-text .transaction-table td {
+    text-align: right !important; /* Right-align Arabic text within cells */
+}
+
+/* Keep numeric columns left-aligned for readability */
+.rtl-mode.arabic-text .transaction-amount,
+.rtl-mode.arabic-text .transaction-debit,
+.rtl-mode.arabic-text .transaction-credit {
+    text-align: left !important; /* Numbers should still read left-to-right */
 }

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -13,7 +14,6 @@ import {
   Check, 
   X, 
   Pencil, 
-  Trash2, 
   Download, 
   Plus, 
   Search, 
@@ -27,7 +27,9 @@ import {
   Moon,
   Sun,
   Undo2,
-  TrendingDown
+  TrendingDown,
+  Settings,
+  Languages
 } from 'lucide-react';
 import { ManualTransactionModal } from './ManualTransactionModal';
 import { TransactionModal } from './TransactionModal';
@@ -36,6 +38,7 @@ import * as XLSX from 'xlsx';
 import './dashboardTheme.css';
 import { CreateProductModal } from './CreateProductModal';
 import { PartnerSetupModal } from './PartnerSetupModal';
+import { useTranslation, type Language } from '@/utils/translations';
 
 interface InventoryItem {
   id: string;
@@ -289,6 +292,118 @@ const generateTrialBalanceData = (transactions: Transaction[], inventory: Invent
 
 export const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState<Language>(() => {
+    const savedLanguage = localStorage.getItem('businessLanguage');
+    return (savedLanguage as Language) || 'en';
+  });
+  
+  const { t } = useTranslation(language);
+
+  // Function to translate debit/credit entries
+  const translateAccountEntry = (entry: string): string => {
+    if (!entry) return entry;
+    
+    // Replace account names with translations
+    let translatedEntry = entry
+      .replace(/Cash/g, t('cash'))
+      .replace(/Revenue/g, t('revenue'))
+      .replace(/Inventory/g, t('inventory'))
+      .replace(/Expenses/g, t('expenses'))
+      .replace(/Gain/g, t('gain'))
+      .replace(/Loss/g, t('loss'))
+      .replace(/Income Summary/g, t('incomeSummary'))
+      .replace(/Partner Capital/g, t('partnerCapital'));
+    
+    // Handle partner-specific capital entries (e.g., "John Capital")
+    if (entry.includes(' Capital')) {
+      const partnerName = entry.split(' Capital')[0];
+      if (partnerName && !['Partner', 'Income Summary'].includes(partnerName)) {
+        translatedEntry = entry.replace(/ Capital/, ` ${t('capital')}`);
+      }
+    }
+    
+    return translatedEntry;
+  };
+
+  // Function to translate transaction descriptions
+  const translateDescription = (description: string): string => {
+    if (!description || language === 'en') return description;
+    
+    let translatedDesc = description;
+    
+    // Handle different description patterns
+    // Pattern: "Sold X ProductName (boxed)"
+    if (description.includes('Sold ')) {
+      const soldMatch = description.match(/Sold (\d+(?:\.\d+)?) (.+?)(\s\(boxed\))?$/);
+      if (soldMatch) {
+        const [, quantity, productName, boxedPart] = soldMatch;
+        const boxedText = boxedPart ? ` (${t('boxed')})` : '';
+        translatedDesc = `${t('sold')} ${quantity} ${productName}${boxedText}`;
+      }
+    }
+    
+    // Pattern: "Purchased X type - ProductName" or "Purchased Xg type - ProductName"
+    else if (description.includes('Purchased ')) {
+      const purchasedMatch = description.match(/Purchased (.+?) (.+?) - (.+)$/);
+      if (purchasedMatch) {
+        const [, quantityPart, typePart, productName] = purchasedMatch;
+        let translatedQuantity = quantityPart;
+        let translatedType = typePart;
+        
+        // Handle different quantity formats
+        if (quantityPart.endsWith('g')) {
+          translatedQuantity = quantityPart.replace('g', t('g'));
+        }
+        
+        // Translate product types
+        const typeTranslations: { [key: string]: string } = {
+          'bottles': t('bottles'),
+          'oil': t('oil'),
+          'box': t('box'),
+          'other': t('other')
+        };
+        
+        if (typeTranslations[typePart]) {
+          translatedType = typeTranslations[typePart];
+        }
+        
+        translatedDesc = `${t('purchased')} ${translatedQuantity} ${translatedType} - ${productName}`;
+      }
+    }
+    
+    // Pattern: "Capital withdrawal by PartnerName"
+    else if (description.includes('Capital withdrawal by ')) {
+      const withdrawalMatch = description.match(/Capital withdrawal by (.+)$/);
+      if (withdrawalMatch) {
+        const [, partnerName] = withdrawalMatch;
+        translatedDesc = `${t('capitalWithdrawalBy')} ${partnerName}`;
+      }
+    }
+    
+    // Pattern: "Business gain" or "Business loss"
+    else if (description === 'Business gain') {
+      translatedDesc = t('businessGain');
+    }
+    else if (description === 'Business loss') {
+      translatedDesc = t('businessLoss');
+    }
+    
+    // Pattern: "Closing Entry - ..."
+    else if (description.includes('Closing Entry')) {
+      translatedDesc = description.replace('Closing Entry', t('closingEntry'));
+    }
+    
+    // Pattern: "Distribution to PartnerName"
+    else if (description.includes('Distribution to ')) {
+      const distributionMatch = description.match(/Distribution to (.+)$/);
+      if (distributionMatch) {
+        const [, partnerName] = distributionMatch;
+        translatedDesc = `${t('distributionTo')} ${partnerName}`;
+      }
+    }
+    
+    return translatedDesc;
+  };
   const [cash, setCash] = useState(() => {
     const savedCash = localStorage.getItem('businessCash');
     return savedCash ? parseFloat(savedCash) : 0.0;
@@ -358,6 +473,17 @@ export const Dashboard = () => {
       setPartners(JSON.parse(hasPartners));
     }
   }, []);
+
+  useEffect(() => {
+    // Initialize language settings on component mount
+    if (language === 'ar') {
+      document.body.setAttribute('dir', 'rtl');
+      document.body.classList.add('rtl-mode');
+    } else {
+      document.body.setAttribute('dir', 'ltr');
+      document.body.classList.remove('rtl-mode');
+    }
+  }, [language]);
 
   const handlePartnerSetup = (partnerData: Partner[]) => {
     // Merge new partners with existing ones, avoiding duplicates by name
@@ -503,17 +629,22 @@ export const Dashboard = () => {
               // Update existing item
               return prev.map(item => {
                 if (item.name === transactionData.productName) {
-                  if (item.type === 'oil') {
+                  // Check if this is an oil purchase (from productType in transaction)
+                  const isOilPurchase = transactionData.productType === 'oil';
+
+                  if (isOilPurchase || item.type === 'oil') {
                     // For oil, update grams and calculate total value
                     const newGrams = (item.grams || 0) + transactionData.quantity;
                     const totalValue = newGrams * transactionData.unitCost;
                     return {
                       ...item,
-            grams: newGrams,
+                      type: 'oil', // Ensure type is set to oil
+                      grams: newGrams,
                       unitCost: transactionData.unitCost,
-                      totalValue: totalValue
-          };
-        } else {
+                      totalValue: totalValue,
+                      quantity: 0 // Oil doesn't use quantity field
+                    };
+                  } else {
                     // For other items, update quantity
                     const newQuantity = item.quantity + transactionData.quantity;
                     const totalValue = newQuantity * transactionData.unitCost;
@@ -528,12 +659,22 @@ export const Dashboard = () => {
                 return item;
               });
       } else {
-              // Determine item type based on name
-              const isOil = transactionData.productName.toLowerCase().includes('oil') || 
-                           transactionData.productName.toLowerCase().includes('coco');
-              const isBottle = transactionData.productName.toLowerCase().includes('ml');
-              
-              const itemType = isOil ? 'oil' : (isBottle ? 'bottles' : 'other');
+              // Use productType from transaction data, with fallback to name detection
+              let itemType: 'bottles' | 'oil' | 'box' | 'other' = 'other';
+
+              if (transactionData.productType) {
+                // Use the explicit productType from the transaction
+                itemType = transactionData.productType;
+              } else {
+                // Fallback: determine item type based on name
+                const isOil = transactionData.productName.toLowerCase().includes('oil') ||
+                             transactionData.productName.toLowerCase().includes('coco');
+                const isBottle = transactionData.productName.toLowerCase().includes('ml');
+                itemType = isOil ? 'oil' : (isBottle ? 'bottles' : 'other');
+              }
+
+              const isOil = itemType === 'oil';
+              const isBottle = itemType === 'bottles';
               const totalValue = transactionData.quantity * transactionData.unitCost;
 
               // Add new item
@@ -545,7 +686,7 @@ export const Dashboard = () => {
                 totalValue: totalValue,
                 type: itemType,
                 grams: isOil ? transactionData.quantity : undefined,
-                milliliters: isBottle ? parseInt(transactionData.productName) : undefined
+                milliliters: isBottle && transactionData.milliliters ? transactionData.milliliters : undefined
               };
               return [...prev, newItem];
             }
@@ -944,6 +1085,21 @@ export const Dashboard = () => {
     }
   };
 
+  const toggleLanguage = () => {
+    const newLanguage = language === 'en' ? 'ar' : 'en';
+    setLanguage(newLanguage);
+    localStorage.setItem('businessLanguage', newLanguage);
+    
+    // Apply RTL for Arabic
+    if (newLanguage === 'ar') {
+      document.body.setAttribute('dir', 'rtl');
+      document.body.classList.add('rtl-mode');
+    } else {
+      document.body.setAttribute('dir', 'ltr');
+      document.body.classList.remove('rtl-mode');
+    }
+  };
+
   const clearAllData = () => {
     try {
       // Reset all state variables
@@ -973,6 +1129,7 @@ export const Dashboard = () => {
 
   const handleEditTransaction = (transaction: Transaction) => {
     setEditingTransaction({...transaction});
+    setShowEditTransactionsModal(true);
   };
 
   const handleSaveEdit = (updatedTransaction: Transaction) => {
@@ -1037,72 +1194,6 @@ export const Dashboard = () => {
     }
   };
 
-  const handleDeleteTransaction = (transaction: Transaction) => {
-    try {
-      // Save current state for undo
-      saveCurrentState();
-
-      // Remove the transaction
-      const updatedTransactions = transactions.filter(t => t.id !== transaction.id);
-      setTransactions(updatedTransactions);
-      localStorage.setItem('businessTransactions', JSON.stringify(updatedTransactions));
-      
-      // Update all related values
-      if (transaction.type === 'sale') {
-        // Update cash
-        setCash(prev => parseFloat((prev - transaction.amount).toFixed(2)));
-        // Update total sales
-        setTotalSales(prev => parseFloat((prev - transaction.amount).toFixed(2)));
-        // Update inventory
-        if (transaction.productName) {
-          const itemIndex = inventory.findIndex(item => item.name === transaction.productName);
-          if (itemIndex >= 0) {
-        const updatedInventory = [...inventory];
-            const item = updatedInventory[itemIndex];
-            item.quantity += (transaction.quantity || 0);
-          item.totalValue = item.quantity * item.unitCost;
-        setInventory(updatedInventory);
-            localStorage.setItem('businessInventory', JSON.stringify(updatedInventory));
-          }
-        }
-      } else if (transaction.type === 'purchase') {
-        // Update cash
-        setCash(prev => parseFloat((prev + transaction.amount).toFixed(2)));
-        // Update inventory
-        if (transaction.productName) {
-          const itemIndex = inventory.findIndex(item => item.name === transaction.productName);
-          if (itemIndex >= 0) {
-        const updatedInventory = [...inventory];
-            const item = updatedInventory[itemIndex];
-            item.quantity -= (transaction.quantity || 0);
-          item.totalValue = item.quantity * item.unitCost;
-        setInventory(updatedInventory);
-            localStorage.setItem('businessInventory', JSON.stringify(updatedInventory));
-          }
-        }
-      } else if (transaction.type === 'expense' || transaction.type === 'loss') {
-        // Update cash
-        setCash(prev => parseFloat((prev + transaction.amount).toFixed(2)));
-      } else if (transaction.type === 'gain') {
-        // Update cash
-        setCash(prev => parseFloat((prev - transaction.amount).toFixed(2)));
-      } else if (transaction.type === 'withdrawal') {
-        // Update cash
-        setCash(prev => parseFloat((prev + transaction.amount).toFixed(2)));
-        // Update partner capital
-        const updatedPartners = partners.map(partner => 
-          partner.name === transaction.partnerName 
-            ? { ...partner, capital: parseFloat((partner.capital + transaction.amount).toFixed(2)) }
-            : partner
-        );
-      setPartners(updatedPartners);
-      localStorage.setItem('businessPartners', JSON.stringify(updatedPartners));
-      }
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
-      alert('Error deleting transaction. Please try again.');
-    }
-  };
 
   const handleClosingEntries = (entries: Transaction[]) => {
     setTransactions(prev => [...prev, ...entries]);
@@ -1116,8 +1207,8 @@ export const Dashboard = () => {
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-primary mb-2 header-title">Business Dashboard</h1>
-              <p className="text-secondary header-subtitle">Track your inventory, cash flow, and transactions</p>
+              <h1 className="text-3xl font-bold text-primary mb-2 header-title">{t('businessDashboard')}</h1>
+              <p className="text-secondary header-subtitle">{t('trackInventory')}</p>
             </div>
             <div className="flex gap-3">
               <Button
@@ -1127,7 +1218,7 @@ export const Dashboard = () => {
                 className="flex items-center gap-2"
               >
                 <Undo2 className="h-4 w-4" />
-                Undo
+                {t('undo')}
               </Button>
               <Button
                 onClick={() => setShowManualModal(true)}
@@ -1135,7 +1226,7 @@ export const Dashboard = () => {
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
-                Closing Entries
+                {t('closingEntries')}
               </Button>
               <Button
                 onClick={handleExportData}
@@ -1143,7 +1234,7 @@ export const Dashboard = () => {
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Export All Statements
+                {t('exportAllStatements')}
               </Button>
               
               <Button
@@ -1152,41 +1243,57 @@ export const Dashboard = () => {
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Add Partner
+                {t('addPartner')}
               </Button>
               
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="flex items-center gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    Clear Data
+                    <X className="h-4 w-4" />
+                    {t('clearData')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Clear All Data</AlertDialogTitle>
+                    <AlertDialogTitle>{t('clearAllData')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action will permanently delete all transactions and reset your data to the initial state. 
-                      This cannot be undone.
+                      {t('clearDataWarning')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                     <AlertDialogAction onClick={clearAllData}>
-                      Clear Data
+                      {t('clearData')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
               
-      <Button 
-        variant="outline" 
-        size="icon" 
-                onClick={toggleDarkMode}
-                className="border-border"
-      >
-                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="border-border"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuLabel>{t('settings')}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onClick={toggleDarkMode} className="flex items-center gap-2">
+            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {darkMode ? t('lightMode') : t('darkMode')}
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={toggleLanguage} className="flex items-center gap-2">
+            <Languages className="h-4 w-4" />
+            {language === 'en' ? 'العربية' : 'English'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
             </div>
           </div>
 
@@ -1194,45 +1301,45 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-card text-primary border-default">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cash Balance</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('cashBalance')}</CardTitle>
               <DollarSign className="h-4 w-4" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">${cash.toFixed(2)}</div>
-              <p className="text-secondary text-xs">Available cash</p>
+              <p className="text-secondary text-xs">{t('availableCash')}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-card text-primary border-default">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('inventoryValue')}</CardTitle>
                 <Package className="h-4 w-4" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">${totalInventoryValue.toFixed(2)}</div>
-                <p className="text-secondary text-xs">Total stock value</p>
+                <p className="text-secondary text-xs">{t('totalStockValue')}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-card text-primary border-default">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('totalSales')}</CardTitle>
                 <TrendingUp className="h-4 w-4" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
-                <p className="text-secondary text-xs">Cumulative sales</p>
+                <p className="text-secondary text-xs">{t('cumulativeSales')}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-card text-primary border-default">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('totalAssets')}</CardTitle>
                 <TrendingUp className="h-4 w-4" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">${(cash + totalInventoryValue).toFixed(2)}</div>
-                <p className="text-secondary text-xs">Cash + Inventory</p>
+                <p className="text-secondary text-xs">{t('cashPlusInventory')}</p>
             </CardContent>
           </Card>
         </div>
@@ -1244,73 +1351,73 @@ export const Dashboard = () => {
               className="h-16 button-primary font-semibold"
             >
               <Plus className="mr-2 h-5 w-5" />
-              Purchase
+              {t('purchase')}
           </Button>
             <Button 
               onClick={() => { setTransactionType('sale'); setShowTransactionModal(true); }}
               className="h-16 button-secondary font-semibold"
             >
               <DollarSign className="mr-2 h-5 w-5" />
-              Sell
+              {t('sell')}
           </Button>
             <Button 
               onClick={() => setShowCreateModal(true)}
               className="h-16 button-primary font-semibold"
             >
               <Package className="mr-2 h-5 w-5" />
-              Create
+              {t('create')}
           </Button>
             <Button 
               onClick={() => { setTransactionType('expense'); setShowTransactionModal(true); }}
               className="h-16 button-secondary font-semibold"
             >
               <FileText className="mr-2 h-5 w-5" />
-              Expenses
+              {t('expenses')}
           </Button>
             <Button 
               onClick={() => { setTransactionType('withdrawal'); setShowTransactionModal(true); }}
               className="h-16 button-primary font-semibold"
             >
               <TrendingDown className="mr-2 h-5 w-5" />
-              Withdraw
+              {t('withdraw')}
           </Button>
             <Button 
               onClick={() => { setTransactionType('gain'); setShowTransactionModal(true); }}
               className="h-16 button-secondary font-semibold"
             >
               <TrendingUp className="mr-2 h-5 w-5" />
-              Gain
+              {t('gain')}
           </Button>
             <Button 
               onClick={() => { setTransactionType('loss'); setShowTransactionModal(true); }}
               className="h-16 button-primary font-semibold"
             >
               <TrendingDown className="mr-2 h-5 w-5" />
-              Loss
+              {t('loss')}
           </Button>
             <Button 
               onClick={() => setShowFinancialModal(true)}
               className="h-16 button-primary font-semibold md:col-span-7"
             >
               <FileText className="mr-2 h-5 w-5" />
-              Financial Statements
+              {t('financialStatements')}
           </Button>
           </div>
 
           {/* Current Inventory */}
           <Card className="mb-8 bg-card border-default">
             <CardHeader>
-              <CardTitle className="text-primary">Current Inventory</CardTitle>
+              <CardTitle className="text-primary">{t('currentInventory')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-default">
-                      <th className="text-left py-3 px-4 font-semibold text-secondary">Product</th>
-                      <th className="text-right py-3 px-4 font-semibold text-secondary">Quantity</th>
-                      <th className="text-right py-3 px-4 font-semibold text-secondary">Unit Cost</th>
-                      <th className="text-right py-3 px-4 font-semibold text-secondary">Total Value</th>
+                      <th className="text-left py-3 px-4 font-semibold text-secondary">{t('product')}</th>
+                      <th className="text-right py-3 px-4 font-semibold text-secondary">{t('quantity')}</th>
+                      <th className="text-right py-3 px-4 font-semibold text-secondary">{t('unitCost')}</th>
+                      <th className="text-right py-3 px-4 font-semibold text-secondary">{t('totalValue')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1333,46 +1440,41 @@ export const Dashboard = () => {
           {/* Recent Transactions */}
           <Card className="bg-card border-default">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-primary">Recent Transactions</CardTitle>
+              <CardTitle className="text-primary">{t('recentTransactions')}</CardTitle>
+              <Button
+                onClick={() => setShowEditTransactionsModal(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                {t('editTransactions')}
+              </Button>
             </CardHeader>
             <CardContent>
               {transactions.length === 0 ? (
-                <p className="text-secondary text-center py-4">No transactions recorded yet.</p>
+                <p className="text-secondary text-center py-4">{t('noTransactions')}</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-border">
+                <div className={`overflow-x-auto ${language === 'ar' ? 'rtl-mode arabic-text' : 'english-text'}`}>
+                  <table className="transaction-table">
                     <thead>
-                      <tr className="text-secondary">
-                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Date</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Type</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Description</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">Amount</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">Debit</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">Credit</th>
-                        <th className="text-center py-3 px-4 font-semibold text-secondary">Actions</th>
+                      <tr>
+                        <th>{t('date')}</th>
+                        <th>{t('type')}</th>
+                        <th>{t('description')}</th>
+                        <th>{t('amount')}</th>
+                        <th>{t('debit')}</th>
+                        <th>{t('credit')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border text-primary">
                       {transactions.slice(-10).reverse().map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-row-hover">
-                          <td className="px-4 py-2 whitespace-nowrap">{transaction.date}</td>
-                          <td className="px-4 py-2 whitespace-nowrap capitalize">{transaction.type}</td>
-                          <td className="px-4 py-2 whitespace-nowrap">{transaction.description}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-right">${transaction.amount.toFixed(2)}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-right">{transaction.debit}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-right">{transaction.credit}</td>
-                          <td className="px-4 py-2 text-center">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteTransaction(transaction)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
+                        <tr key={transaction.id}>
+                          <td>{transaction.date}</td>
+                          <td className={`transaction-type-${transaction.type}`}>{t(transaction.type)}</td>
+                          <td>{translateDescription(transaction.description)}</td>
+                          <td className="transaction-amount">${transaction.amount.toFixed(2)}</td>
+                          <td className="transaction-debit">{translateAccountEntry(transaction.debit)}</td>
+                          <td className="transaction-credit">{translateAccountEntry(transaction.credit)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1388,6 +1490,7 @@ export const Dashboard = () => {
           isOpen={showPartnerSetup}
           onClose={() => setShowPartnerSetup(false)}
           onSubmit={handlePartnerSetup}
+          language={language}
         />
 
         <TransactionModal
@@ -1397,6 +1500,7 @@ export const Dashboard = () => {
           type={transactionType}
           inventory={inventory}
           partners={partners}
+          language={language}
         />
 
         <CreateProductModal
@@ -1404,6 +1508,7 @@ export const Dashboard = () => {
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateProduct}
           inventory={inventory}
+          language={language}
         />
 
         <FinancialStatementsModal
@@ -1414,6 +1519,7 @@ export const Dashboard = () => {
           cash={cash}
           partners={partners}
           onClosingEntries={handleClosingEntries}
+          language={language}
         />
 
         <ManualTransactionModal
@@ -1437,14 +1543,20 @@ export const Dashboard = () => {
           totalLosses={transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0)}
           totalGains={transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0)}
           partners={partners}
+          language={language}
         />
 
-        <Dialog open={showEditTransactionsModal} onOpenChange={setShowEditTransactionsModal}>
+        <Dialog open={showEditTransactionsModal} onOpenChange={(open) => {
+          setShowEditTransactionsModal(open);
+          if (!open) {
+            setEditingTransaction(null);
+          }
+        }}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Transactions</DialogTitle>
               <DialogDescription>
-                View and manage your transactions. You can edit or delete transactions.
+                {t('clickToEdit')}
               </DialogDescription>
             </DialogHeader>
               <div className="overflow-x-auto">
@@ -1456,12 +1568,19 @@ export const Dashboard = () => {
                     <th className="text-right py-3 px-4 font-semibold text-secondary">Amount</th>
                     <th className="text-right py-3 px-4 font-semibold text-secondary">Debit</th>
                     <th className="text-right py-3 px-4 font-semibold text-secondary">Credit</th>
-                    <th className="text-center py-3 px-4 font-semibold text-secondary">Actions</th>
                     </tr>
                   </thead>
                 <tbody>
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b border-default table-row-hover">
+                    <tr 
+                      key={transaction.id} 
+                      className={`border-b border-default cursor-pointer ${
+                        editingTransaction?.id === transaction.id 
+                          ? 'bg-blue-50 table-row-hover' 
+                          : 'table-row-hover hover:bg-gray-50'
+                      }`}
+                      onClick={() => editingTransaction?.id !== transaction.id && setEditingTransaction({...transaction})}
+                    >
                       <td className="py-3 px-4 text-secondary">
                         {editingTransaction?.id === transaction.id ? (
                           <input
@@ -1532,44 +1651,27 @@ export const Dashboard = () => {
                           transaction.credit
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                          {editingTransaction?.id === transaction.id ? (
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              onClick={() => handleSaveEdit(editingTransaction)}
-                                className="text-green-500 hover:text-green-700"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingTransaction(null)}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditTransaction(transaction)}
-                                className="text-blue-500 hover:text-blue-700"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {editingTransaction && (
+                <div className="flex gap-2 justify-end p-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingTransaction(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleSaveEdit(editingTransaction)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    {t('saveChanges')}
+                  </Button>
+                </div>
+              )}
           </DialogContent>
         </Dialog>
       </div>

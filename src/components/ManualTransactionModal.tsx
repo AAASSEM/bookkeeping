@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useTranslation, type Language } from '@/utils/translations';
 
 interface ManualTransactionModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface ManualTransactionModalProps {
   totalLosses: number;
   totalGains: number;
   partners: { name: string; capital: number; }[];
+  language: Language;
 }
 
 export const ManualTransactionModal = ({ 
@@ -30,8 +32,10 @@ export const ManualTransactionModal = ({
   totalCOGS,
   totalLosses,
   totalGains,
-  partners 
+  partners,
+  language 
 }: ManualTransactionModalProps) => {
+  const { t } = useTranslation(language);
   const [error, setError] = useState('');
   const [distributions, setDistributions] = useState<{ [key: string]: number }>({});
   const [totalPercentage, setTotalPercentage] = useState(0);
@@ -73,12 +77,12 @@ export const ManualTransactionModal = ({
     setError(''); // Clear any previous errors
 
     if (Math.abs(totalPercentage - 100) > 0.01) {
-      setError("Total distribution percentage must equal 100%.");
+      setError(t('totalDistributionError'));
       return;
     }
 
     const overallConfirmation = window.confirm(
-      "You are about to finalize the financial period. This process includes exporting data and resetting the system for a new period. Do you wish to proceed?"
+      t('overallConfirmation')
     );
 
     if (overallConfirmation) {
@@ -130,7 +134,7 @@ export const ManualTransactionModal = ({
 
         // Add export confirmation
         const exportConfirmation = window.confirm(
-          "Financial entries for the period have been recorded. Do you wish to export all current data for archiving before resetting the system?"
+          t('exportConfirmation')
         );
 
         if (exportConfirmation) {
@@ -140,12 +144,12 @@ export const ManualTransactionModal = ({
           onClose();
         } else {
           // Cancel export and reset
-          window.alert("Export cancelled. System will not be reset without data archiving. Please export manually if needed.");
+          window.alert(t('exportCancelled'));
           onClose();
         }
       } catch (error) {
         console.error('Error during closing process:', error);
-        setError('An error occurred during the closing process. Please try again.');
+        setError(t('errorDuringClosing'));
       }
     }
   };
@@ -156,12 +160,12 @@ export const ManualTransactionModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Closing Entry</DialogTitle>
+          <DialogTitle>{t('closingEntry')}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="text-sm text-muted-foreground">
-            <p className="mb-2">Enter the distribution percentages for each partner (total must equal 100%).</p>
-            <p className="font-medium mb-4">Net Income: ${netIncome.toFixed(2)}</p>
+            <p className="mb-2">{t('distributionInstructions')}</p>
+            <p className="font-medium mb-4">{t('netIncome')}: ${netIncome.toFixed(2)}</p>
             
             <div className="space-y-4">
               {partners.map(partner => (
@@ -185,7 +189,7 @@ export const ManualTransactionModal = ({
             </div>
 
             <div className="mt-4 p-2 bg-muted rounded">
-              <p className="font-medium">Distribution Summary:</p>
+              <p className="font-medium">{t('distributionSummary')}:</p>
               <ul className="list-disc pl-4 mt-2">
                 {partnerShares.map(partner => (
                   <li key={partner.name}>
@@ -194,9 +198,9 @@ export const ManualTransactionModal = ({
                 ))}
               </ul>
               <p className="mt-2 font-medium">
-                Total: {totalPercentage.toFixed(1)}%
+                {t('total')}: {totalPercentage.toFixed(1)}%
                 {Math.abs(totalPercentage - 100) > 0.01 && (
-                  <span className="text-red-500 ml-2">(Must equal 100%)</span>
+                  <span className="text-red-500 ml-2">{t('mustEqual100')}</span>
                 )}
               </p>
             </div>
@@ -205,14 +209,14 @@ export const ManualTransactionModal = ({
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button 
             onClick={handleClosingProcess} 
             variant="destructive"
             disabled={Math.abs(totalPercentage - 100) > 0.01}
           >
-            Complete Closing
+            {t('completeClosing')}
           </Button>
         </div>
       </DialogContent>

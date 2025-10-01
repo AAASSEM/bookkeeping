@@ -4,15 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useTranslation, type Language } from '@/utils/translations';
 
 interface CreateProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
   inventory: any[];
+  language: Language;
 }
 
-export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: CreateProductModalProps) => {
+export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory, language }: CreateProductModalProps) => {
+  const { t } = useTranslation(language);
   const [formData, setFormData] = useState({
     name: '',
     quantity: '',
@@ -102,49 +105,49 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
-          <DialogTitle>Create Product</DialogTitle>
+          <DialogTitle>{t('createProduct')}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
           <div>
-            <Label htmlFor="name">Product Name</Label>
+            <Label htmlFor="name">{t('productName')}</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              placeholder="Enter product name"
+              placeholder={t('enterProductName')}
               required
             />
           </div>
           
           <div>
-            <Label htmlFor="quantity">Quantity to Create</Label>
+            <Label htmlFor="quantity">{t('quantityToCreate')}</Label>
             <Input
               id="quantity"
               type="number"
               step="0.01"
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-              placeholder="Enter quantity"
+              placeholder={t('enterQuantity')}
               required
             />
           </div>
 
               <div>
-                <Label htmlFor="bottleType">Bottle Type</Label>
+                <Label htmlFor="bottleType">{t('bottleType')}</Label>
                 <Select
                   value={formData.bottleType}
                   onValueChange={(value) => setFormData({...formData, bottleType: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select bottle type" />
+                    <SelectValue placeholder={t('selectBottleType')} />
                   </SelectTrigger>
                   <SelectContent>
                     {bottleTypes.map((bottle) => (
                       <SelectItem key={bottle.name} value={bottle.name}>
-                        {bottle.name} (Available: {bottle.quantity}, Cost: ${bottle.unitCost.toFixed(2)} each)
+                        {bottle.name} ({t('available')}: {bottle.quantity}, {t('cost')}: ${bottle.unitCost.toFixed(2)} {t('each')})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -152,14 +155,14 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
           </div>
           
           <div>
-            <Label htmlFor="bottlesUsed">Bottles Used</Label>
+            <Label htmlFor="bottlesUsed">{t('bottlesUsed')}</Label>
             <Input
               id="bottlesUsed"
               type="number"
               step="0.01"
               value={formData.bottlesUsed}
               onChange={(e) => setFormData({...formData, bottlesUsed: e.target.value})}
-                  placeholder={selectedBottle ? `Available: ${selectedBottle.quantity}` : 'Select bottle type first'}
+                  placeholder={selectedBottle ? `${t('available')}: ${selectedBottle.quantity}` : t('selectBottleFirst')}
                   max={selectedBottle?.quantity}
                   disabled={!formData.bottleType}
             />
@@ -168,18 +171,18 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="oilType">Oil Type</Label>
+                <Label htmlFor="oilType">{t('oilType')}</Label>
                 <Select
                   value={formData.oilType}
                   onValueChange={(value) => setFormData({...formData, oilType: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select oil type" />
+                    <SelectValue placeholder={t('selectOilType')} />
                   </SelectTrigger>
                   <SelectContent>
                     {oilTypes.map((oil) => (
                       <SelectItem key={oil.name} value={oil.name}>
-                        {oil.name} (Available: {oil.grams}g, Cost: ${oil.unitCost.toFixed(2)} per gram)
+                        {oil.name} ({t('available')}: {oil.grams}g, {t('cost')}: ${oil.unitCost.toFixed(2)} {t('perGram')})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -187,28 +190,28 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
           </div>
           
           <div>
-            <Label htmlFor="oilUsed">Oil Used (grams)</Label>
+            <Label htmlFor="oilUsed">{t('oilUsed')}</Label>
             <Input
               id="oilUsed"
               type="number"
               step="0.01"
               value={formData.oilUsed}
               onChange={(e) => setFormData({...formData, oilUsed: e.target.value})}
-                  placeholder={selectedOil ? `Available: ${selectedOil.grams}g` : 'Select oil type first'}
+                  placeholder={selectedOil ? `${t('available')}: ${selectedOil.grams}g` : t('selectOilFirst')}
                   max={selectedOil?.grams}
                   disabled={!formData.oilType}
                 />
               </div>
 
               <div>
-                <Label htmlFor="sellingPrice">Selling Price per Unit</Label>
+                <Label htmlFor="sellingPrice">{t('sellingPricePerUnit')}</Label>
                 <Input
                   id="sellingPrice"
                   type="number"
                   step="0.01"
                   value={formData.sellingPrice}
                   onChange={(e) => setFormData({...formData, sellingPrice: e.target.value})}
-                  placeholder="Enter selling price"
+                  placeholder={t('enterSellingPrice')}
                   required
                 />
               </div>
@@ -217,25 +220,25 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory }: Cre
           
           <div className="bg-primary/20 p-3 rounded-lg space-y-2">
             <p className="text-sm text-primary-foreground">
-              This will create {formData.quantity || 0} units of "{formData.name}" using {formData.bottlesUsed || 0} {formData.bottleType || 'bottles'} and {formData.oilUsed || 0}g of {formData.oilType || 'oil'}.
+              {t('thisWillCreate')} {formData.quantity || 0} {t('unitsOf')} "{formData.name}" {t('using')} {formData.bottlesUsed || 0} {formData.bottleType || t('bottles')} {t('and')} {formData.oilUsed || 0}{t('gOfOil')}.
             </p>
             <div className="text-sm text-primary-foreground font-semibold">
-              <p>Cost Breakdown:</p>
-              <p>• Bottles: ${bottleCost.toFixed(2)}</p>
-              <p>• Oil: ${oilCost.toFixed(2)}</p>
-              <p>• Total Cost: ${totalCost.toFixed(2)}</p>
-              <p>• Cost per Unit: ${unitCost.toFixed(2)}</p>
-              <p>• Selling Price per Unit: ${formData.sellingPrice || '0.00'}</p>
-              <p>• Potential Profit per Unit: ${(parseFloat(formData.sellingPrice || '0') - unitCost).toFixed(2)}</p>
+              <p>{t('costBreakdown')}</p>
+              <p>• {t('bottles')}: ${bottleCost.toFixed(2)}</p>
+              <p>• {t('oil')}: ${oilCost.toFixed(2)}</p>
+              <p>• {t('totalCost')}: ${totalCost.toFixed(2)}</p>
+              <p>• {t('costPerUnit')}: ${unitCost.toFixed(2)}</p>
+              <p>• {t('sellingPricePerUnit')}: ${formData.sellingPrice || '0.00'}</p>
+              <p>• {t('potentialProfitPerUnit')}: ${(parseFloat(formData.sellingPrice || '0') - unitCost).toFixed(2)}</p>
             </div>
           </div>
           
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
-              Create Product
+              {t('createProduct')}
             </Button>
           </div>
         </form>

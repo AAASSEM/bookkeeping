@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useTranslation, type Language } from '@/utils/translations';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -13,9 +14,11 @@ interface TransactionModalProps {
   type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss';
   inventory: any[];
   partners: { name: string; capital: number }[];
+  language: Language;
 }
 
-export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, partners }: TransactionModalProps) => {
+export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, partners, language }: TransactionModalProps) => {
+  const { t } = useTranslation(language);
   // For multi-product sale
   const [saleItems, setSaleItems] = useState([
     { productName: '', quantity: '', isBoxed: false, boxPrice: '', price: '' }
@@ -248,13 +251,13 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
   const getTitle = () => {
     switch (type) {
-      case 'purchase': return 'Purchase Inventory';
-      case 'sale': return 'Record Sale';
-      case 'expense': return 'Record Expense';
-      case 'withdrawal': return 'Partner Withdrawal';
-      case 'gain': return 'Record Gain';
-      case 'loss': return 'Record Loss';
-      default: return 'Transaction';
+      case 'purchase': return t('purchaseInventory');
+      case 'sale': return t('recordSale');
+      case 'expense': return t('recordExpense');
+      case 'withdrawal': return t('partnerWithdrawal');
+      case 'gain': return t('recordGain');
+      case 'loss': return t('recordLoss');
+      default: return t('transaction');
     }
   };
 
@@ -272,16 +275,16 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
       return (
         <>
           <div>
-            <Label htmlFor="productType">Product Type</Label>
+            <Label htmlFor="productType">{t('productType')}</Label>
             <Select value={formData.productType} onValueChange={(value) => setFormData({...formData, productType: value, productName: '', quantity: '', grams: '', milliliters: ''})}>
               <SelectTrigger>
-                <SelectValue placeholder="Select product type" />
+                <SelectValue placeholder={t('selectProductType')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bottles">Bottles</SelectItem>
-                <SelectItem value="oil">Oil</SelectItem>
-                <SelectItem value="box">Box</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="bottles">{t('bottles')}</SelectItem>
+                <SelectItem value="oil">{t('oil')}</SelectItem>
+                <SelectItem value="box">{t('box')}</SelectItem>
+                <SelectItem value="other">{t('other')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -289,13 +292,19 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           {formData.productType && (
             <div>
               <Label htmlFor="productName">
-                {formData.productType === 'other' ? 'Product Name' : `${formData.productType.charAt(0).toUpperCase() + formData.productType.slice(0, -1)} Name`}
+                {formData.productType === 'other' ? t('productName') : 
+                 formData.productType === 'bottles' ? t('bottleName') :
+                 formData.productType === 'oil' ? t('oilName') :
+                 formData.productType === 'box' ? t('boxName') : t('productName')}
               </Label>
               <Input
                 id="productName"
                 value={formData.productName}
                 onChange={(e) => setFormData({...formData, productName: e.target.value})}
-                placeholder={`Enter ${formData.productType === 'other' ? 'product' : formData.productType.slice(0, -1)} name`}
+                placeholder={formData.productType === 'other' ? t('enterProductName') : 
+                           formData.productType === 'bottles' ? t('enterProductName') :
+                           formData.productType === 'oil' ? t('enterProductName') :
+                           formData.productType === 'box' ? t('enterProductName') : t('enterProductName')}
                 required
               />
             </div>
@@ -304,26 +313,26 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           {formData.productType === 'bottles' && (
             <>
               <div>
-                <Label htmlFor="milliliters">Milliliters per bottle</Label>
+                <Label htmlFor="milliliters">{t('millilitersPerBottle')}</Label>
                 <Input
                   id="milliliters"
                   type="number"
                   step="0.01"
                   value={formData.milliliters}
                   onChange={(e) => setFormData({...formData, milliliters: e.target.value})}
-                  placeholder="Enter milliliters"
+                  placeholder={t('enterMilliliters')}
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="quantity">Quantity (bottles)</Label>
+                <Label htmlFor="quantity">{t('quantityBottles')}</Label>
                 <Input
                   id="quantity"
                   type="number"
                   step="0.01"
                   value={formData.quantity}
                   onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                  placeholder="Enter quantity"
+                  placeholder={t('enterQuantity')}
                   required
                 />
               </div>
@@ -332,14 +341,14 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
           {formData.productType === 'oil' && (
             <div>
-              <Label htmlFor="grams">Grams</Label>
+              <Label htmlFor="grams">{t('grams')}</Label>
               <Input
                 id="grams"
                 type="number"
                 step="0.01"
                 value={formData.grams}
                 onChange={(e) => setFormData({...formData, grams: e.target.value})}
-                placeholder="Enter grams"
+                placeholder={t('enterGrams')}
                 required
               />
             </div>
@@ -347,14 +356,14 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
           {(formData.productType === 'box' || formData.productType === 'other') && (
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
+              <Label htmlFor="quantity">{t('quantity')}</Label>
               <Input
                 id="quantity"
                 type="number"
                 step="0.01"
                 value={formData.quantity}
                 onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                placeholder="Enter quantity"
+                placeholder={t('enterQuantity')}
                 required
               />
             </div>
@@ -370,7 +379,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               <div key={idx} className="border p-2 mb-2 rounded-md bg-muted/30">
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <Label>Select Product</Label>
+                    <Label>{t('product')}</Label>
                     <Select
                       value={item.productName}
                       onValueChange={value => {
@@ -381,7 +390,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
                       }}
                     >
               <SelectTrigger>
-                        <SelectValue placeholder="Select a product to sell" />
+                        <SelectValue placeholder={t('selectProductToSell')} />
               </SelectTrigger>
               <SelectContent>
                         {createdProducts.map(product => (
@@ -392,24 +401,24 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               </SelectContent>
             </Select>
           </div>
-                  <Button type="button" variant="destructive" onClick={() => removeSaleItem(idx)} disabled={saleItems.length === 1}>Remove</Button>
+                  <Button type="button" variant="destructive" onClick={() => removeSaleItem(idx)} disabled={saleItems.length === 1}>{t('remove')}</Button>
                 </div>
                 {item.productName && (
                   <>
           <div>
-                      <Label>Quantity</Label>
+                      <Label>{t('quantity')}</Label>
             <Input
               type="number"
               step="0.01"
                         value={item.quantity}
                         onChange={e => handleSaleItemChange(idx, 'quantity', e.target.value)}
-              placeholder="Enter quantity"
+              placeholder={t('enterQuantity')}
                         max={createdProducts.find(p => p.name === item.productName)?.quantity || 0}
               required
             />
           </div>
           <div>
-                      <Label>Price per Unit</Label>
+                      <Label>{t('pricePerUnit')}</Label>
             <Input
               type="number"
               step="0.01"
@@ -423,24 +432,24 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
                         checked={item.isBoxed}
                         onCheckedChange={checked => handleSaleItemChange(idx, 'isBoxed', checked as boolean)}
             />
-                      <Label>Package in Box</Label>
+                      <Label>{t('packageInBox')}</Label>
           </div>
                     {item.isBoxed && (
             <div>
-                        <Label>Box Price</Label>
+                        <Label>{t('boxPrice')}</Label>
               <Input
                 type="number"
                 step="0.01"
                           value={item.boxPrice}
                           onChange={e => handleSaleItemChange(idx, 'boxPrice', e.target.value)}
-                placeholder="Enter box price"
+                placeholder={t('enterBoxPrice')}
                 required
               />
             </div>
           )}
                     <div className="bg-primary/20 p-3 rounded-lg">
                       <p className="text-sm text-primary-foreground">
-                        Total Sale Amount: ${(parseFloat(item.quantity || '0') * parseFloat(item.price || '0') + parseFloat(item.boxPrice || '0')).toFixed(2)}
+                        {t('totalSaleAmount')}: ${(parseFloat(item.quantity || '0') * parseFloat(item.price || '0') + parseFloat(item.boxPrice || '0')).toFixed(2)}
               </p>
             </div>
                   </>
@@ -448,7 +457,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               </div>
             ))}
           </div>
-          <Button type="button" variant="outline" onClick={addSaleItem} className="w-full mb-2">+ Add Another Product</Button>
+          <Button type="button" variant="outline" onClick={addSaleItem} className="w-full mb-2">+ {t('addAnotherItem')}</Button>
         </>
       );
     }
@@ -469,7 +478,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           {type === 'purchase' && formData.productType && (
             <div>
               <Label htmlFor="price">
-                Price per {formData.productType === 'oil' ? 'Gram' : 'Unit'}
+                {formData.productType === 'oil' ? t('pricePerGram') : t('pricePerUnitGeneric')}
               </Label>
               <Input
                 id="price"
@@ -477,7 +486,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
                 step="0.01"
                 value={formData.price}
                 onChange={(e) => setFormData({...formData, price: e.target.value})}
-                placeholder="Enter price"
+                placeholder={t('enterAmount')}
                 required
               />
             </div>
@@ -486,7 +495,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           {type === 'purchase' && formData.productType && ((formData.productType === 'oil' && formData.grams && formData.price) || (formData.productType !== 'oil' && formData.quantity && formData.price)) && (
             <div className="bg-primary/20 p-3 rounded-lg">
               <p className="text-sm text-primary-foreground">
-                Total Cost: ${calculatePurchaseTotal().toFixed(2)}
+                {t('totalCost')}: ${calculatePurchaseTotal().toFixed(2)}
               </p>
             </div>
           )}
@@ -495,12 +504,12 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
             <>
               {(type === 'expense' || type === 'gain' || type === 'loss') && (
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('description')}</Label>
                   <Input
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder={type === 'expense' ? 'e.g., Shipping, Office supplies' : `Describe the ${type}`}
+                    placeholder={t('enterDescription')}
                     required={type === 'expense'}
                   />
                 </div>
@@ -508,10 +517,10 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
               {type === 'withdrawal' && (
                 <div>
-                  <Label htmlFor="partner">Partner</Label>
+                  <Label htmlFor="partner">{t('partner')}</Label>
                   <Select value={formData.partnerName} onValueChange={(value) => setFormData({...formData, partnerName: value})}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select partner" />
+                      <SelectValue placeholder={t('selectPartner')} />
                     </SelectTrigger>
                     <SelectContent>
                       {partners.map((partner) => (
@@ -525,14 +534,14 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               )}
               
               <div>
-                <Label htmlFor="amount">Amount</Label>
+                <Label htmlFor="amount">{t('amount')}</Label>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
                   value={formData.amount}
                   onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                  placeholder="Enter amount"
+                  placeholder={t('enterAmount')}
                   required
                 />
               </div>
@@ -540,24 +549,24 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           )}
           
           <div>
-            <Label htmlFor="payment">Payment Method</Label>
+            <Label htmlFor="payment">{t('paymentMethod')}</Label>
             <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({...formData, paymentMethod: value})}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="credit">Credit</SelectItem>
+                <SelectItem value="cash">{t('cash')}</SelectItem>
+                <SelectItem value="credit">{t('credit')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
-              Save Transaction
+              {t('saveTransaction')}
             </Button>
           </div>
         </form>

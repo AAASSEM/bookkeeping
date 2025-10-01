@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Minus } from 'lucide-react';
+import { useTranslation, type Language } from '@/utils/translations';
 
 interface Partner {
   name: string;
@@ -15,9 +16,11 @@ interface PartnerSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (partners: { name: string; capital: number }[]) => void;
+  language: Language;
 }
 
-export const PartnerSetupModal = ({ isOpen, onClose, onSubmit }: PartnerSetupModalProps) => {
+export const PartnerSetupModal = ({ isOpen, onClose, onSubmit, language }: PartnerSetupModalProps) => {
+  const { t } = useTranslation(language);
   const [partners, setPartners] = useState<Partner[]>([{ name: '', capital: '' }]);
 
   const addPartner = () => {
@@ -52,7 +55,7 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit }: PartnerSetupMod
     <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Setup Business Partners</DialogTitle>
+          <DialogTitle>{t('setupPartners')}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,24 +64,24 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit }: PartnerSetupMod
           {partners.map((partner, index) => (
             <div key={index} className="flex gap-2 items-end">
               <div className="flex-1">
-                <Label htmlFor={`name-${index}`}>Partner Name</Label>
+                <Label htmlFor={`name-${index}`}>{t('partnerName')}</Label>
                 <Input
                   id={`name-${index}`}
                   value={partner.name}
                   onChange={(e) => updatePartner(index, 'name', e.target.value)}
-                  placeholder="Enter partner name"
+                  placeholder={t('enterPartnerName')}
                   required
                 />
               </div>
               <div className="flex-1">
-                <Label htmlFor={`capital-${index}`}>Capital Amount</Label>
+                <Label htmlFor={`capital-${index}`}>{t('initialCapital')}</Label>
                 <Input
                   id={`capital-${index}`}
                   type="number"
                   step="0.01"
                   value={partner.capital}
                   onChange={(e) => updatePartner(index, 'capital', e.target.value)}
-                  placeholder="0.00"
+                  placeholder={t('enterInitialCapital')}
                   required
                 />
               </div>
@@ -96,12 +99,12 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit }: PartnerSetupMod
           
           <Button type="button" variant="outline" onClick={addPartner} className="w-full">
             <Plus className="h-4 w-4 mr-2" />
-            Add Partner
+            {t('addPartner')}
           </Button>
           
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-              Setup Business
+              {t('setupBusiness')}
             </Button>
           </div>
         </form>
