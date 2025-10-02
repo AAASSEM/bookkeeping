@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Trash2 } from 'lucide-react';
 import { useTranslation, type Language } from '@/utils/translations';
 
 interface Partner {
@@ -16,10 +16,12 @@ interface PartnerSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (partners: { name: string; capital: number }[]) => void;
+  onDeletePartner?: (partnerName: string) => void;
   language: Language;
+  existingPartners?: { name: string; capital: number }[];
 }
 
-export const PartnerSetupModal = ({ isOpen, onClose, onSubmit, language }: PartnerSetupModalProps) => {
+export const PartnerSetupModal = ({ isOpen, onClose, onSubmit, onDeletePartner, language, existingPartners = [] }: PartnerSetupModalProps) => {
   const { t } = useTranslation(language);
   const [partners, setPartners] = useState<Partner[]>([{ name: '', capital: '' }]);
 
@@ -51,16 +53,47 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit, language }: Partn
     }
   };
 
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{t('setupPartners')}</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-slate-600">Enter the partners and their initial capital amounts:</p>
-          
+          {existingPartners.length > 0 && (
+            <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <h4 className="text-sm font-semibold mb-2 text-primary">{t('existingPartners')}:</h4>
+              {existingPartners.map((partner, idx) => (
+                <div key={idx} className="flex justify-between items-center text-sm text-secondary py-1">
+                  <span>{partner.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span>${partner.capital.toFixed(2)}</span>
+                    {partner.capital === 0 && onDeletePartner && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => onDeletePartner(partner.name)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-sm text-slate-600">{existingPartners.length > 0 ? t('addNewPartners') : t('enterPartnersCapital')}:</p>
+
           {partners.map((partner, index) => (
             <div key={index} className="flex gap-2 items-end">
               <div className="flex-1">
@@ -96,15 +129,15 @@ export const PartnerSetupModal = ({ isOpen, onClose, onSubmit, language }: Partn
               </Button>
             </div>
           ))}
-          
+
           <Button type="button" variant="outline" onClick={addPartner} className="w-full">
             <Plus className="h-4 w-4 mr-2" />
             {t('addPartner')}
           </Button>
-          
+
           <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-              {t('setupBusiness')}
+            <Button type="submit" className="flex-1">
+              {existingPartners.length > 0 ? t('addPartner') : t('setupBusiness')}
             </Button>
           </div>
         </form>

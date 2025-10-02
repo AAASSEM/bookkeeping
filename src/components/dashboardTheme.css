@@ -62,7 +62,7 @@
   --popover: 210 14% 23.5% !important; /* hsl for popover background */
   --popover-foreground: 0 0% 97.3% !important; /* hsl for popover text */
 
-  --border: 210 10% 30% !important; /* hsl for #4F525A */
+  --border: 182 85% 35% !important; /* hsl for phthalo green border */
   --input: 210 14% 23.5% !important; /* hsl for input background */
   --ring: 182 85% 35% !important; /* hsl for ring, same as primary (phthalo green) */
 
@@ -232,18 +232,21 @@ input, select, textarea {
 /* Custom Scrollbar for Financial Statements (already present, ensuring it uses new vars) */
 .custom-scrollbar {
 scrollbar-width: thin !important;
-scrollbar-color: hsl(var(--primary)) hsl(var(--border)) !important; /* Uses primary for thumb, border for track */
+scrollbar-color: #888 #f1f1f1 !important; /* Gray thumb, light gray track */
 }
 .custom-scrollbar::-webkit-scrollbar {
 width: 8px !important;
 border-radius: 8px !important;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-background: hsl(var(--primary)) !important;
+background: #888 !important;
 border-radius: 8px !important;
 }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+background: #555 !important;
+}
 .custom-scrollbar::-webkit-scrollbar-track {
-background: hsl(var(--border)) !important;
+background: #f1f1f1 !important;
 border-radius: 8px !important;
 }
 
@@ -310,42 +313,61 @@ border-radius: 8px !important;
     color: hsl(var(--background)) !important;
 }
 
-/* Override red hover effects in dark mode */
+/* Keep destructive buttons red in dark mode - no green override */
+.dark-mode .Button[variant="destructive"],
+.dark-mode button[variant="destructive"] {
+    background-color: hsl(var(--destructive)) !important;
+    color: hsl(var(--destructive-foreground)) !important;
+}
+
 .dark-mode .Button[variant="destructive"]:hover,
-.dark-mode button[variant="destructive"]:hover,
-.dark-mode [class*="destructive"]:hover {
-    background-color: hsl(var(--phthalo-green)) !important;
-    color: hsl(var(--background)) !important;
-    opacity: 1 !important;
-}
-
-.dark-mode .hover\:bg-destructive:hover,
-.dark-mode .hover\:bg-red:hover,
-.dark-mode [class*="hover:bg-red"]:hover {
-    background-color: hsl(var(--phthalo-green)) !important;
-    color: hsl(var(--background)) !important;
-}
-
-/* Comprehensive red element overrides for dark mode */
-.dark-mode .bg-red-500,
-.dark-mode .bg-red-600,
-.dark-mode .bg-red-700,
-.dark-mode .text-red-500,
-.dark-mode .text-red-600 {
-    background-color: hsl(var(--phthalo-green)) !important;
-    color: hsl(var(--background)) !important;
-}
-
-.dark-mode .hover\:bg-red-500:hover,
-.dark-mode .hover\:bg-red-600:hover,
-.dark-mode .hover\:bg-red-700:hover {
-    background-color: hsl(182 85% 30%) !important;
-    color: hsl(var(--background)) !important;
+.dark-mode button[variant="destructive"]:hover {
+    background-color: hsl(355 78% 50%) !important;
+    color: hsl(var(--destructive-foreground)) !important;
+    opacity: 0.9 !important;
 }
 
 /* Override transaction table hover effects if any */
 .dark-mode .transaction-table tbody tr:hover {
     background-color: hsl(var(--phthalo-green) / 0.1) !important;
+}
+
+/* Dark mode transaction table header */
+.dark-mode .transaction-table thead {
+    background-color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode .transaction-table thead th {
+    color: hsl(var(--background)) !important; /* White text on phthalo green */
+}
+
+/* Dark mode button overrides for outline buttons - target all outline buttons */
+.dark-mode button.border-input,
+.dark-mode button[class*="border-input"],
+.dark-mode .border.border-input,
+.dark-mode button.border:not([class*="destructive"]) {
+    border-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode button.border-input:hover,
+.dark-mode button[class*="border-input"]:hover,
+.dark-mode .border.border-input:hover,
+.dark-mode button.border:not([class*="destructive"]):hover {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(0 0% 0%) !important; /* Black text on phthalo green */
+    border-color: hsl(var(--phthalo-green)) !important;
+}
+
+/* Override for Settings icon button */
+.dark-mode button[size="icon"] {
+    border-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(var(--phthalo-green)) !important;
+}
+
+.dark-mode button[size="icon"]:hover {
+    background-color: hsl(var(--phthalo-green)) !important;
+    color: hsl(0 0% 0%) !important;
 }
 
 /* Override specific red button hover effects */
@@ -443,6 +465,24 @@ border-radius: 8px !important;
     flex-direction: row-reverse !important;
 }
 
+/* Remove focus ring from all buttons and interactive elements */
+button:focus,
+button:focus-visible,
+input:focus,
+select:focus,
+textarea:focus,
+[role="button"]:focus,
+a:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Remove focus ring specifically for buttons */
+button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 /* RTL Table Support */
 .rtl-mode table {
     direction: rtl !important;
@@ -485,11 +525,12 @@ border-radius: 8px !important;
 
 /* Standardized Transaction Table Structure */
 .transaction-table {
-    width: 100% !important;
+    width: calc(100% + 350px) !important;
+    min-width: calc(100% + 350px) !important;
     border-collapse: collapse !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
-    table-layout: fixed !important; /* Ensures consistent column widths */
+    table-layout: auto !important;
 }
 
 .transaction-table th,
@@ -501,24 +542,49 @@ border-radius: 8px !important;
     text-overflow: ellipsis !important;
 }
 
-/* Consistent Column Widths */
+/* First 6 columns - calculated to fill container width */
 .transaction-table th:nth-child(1),
-.transaction-table td:nth-child(1) { width: 15%; } /* Date */
+.transaction-table td:nth-child(1) { width: calc((100vw - 350px) * 0.15); min-width: 100px; } /* Date */
 
 .transaction-table th:nth-child(2),
-.transaction-table td:nth-child(2) { width: 15%; } /* Type */
+.transaction-table td:nth-child(2) { width: calc((100vw - 350px) * 0.15); min-width: 100px; } /* Type */
 
 .transaction-table th:nth-child(3),
-.transaction-table td:nth-child(3) { width: 35%; } /* Description */
+.transaction-table td:nth-child(3) { width: calc((100vw - 350px) * 0.35); min-width: 200px; } /* Description */
 
 .transaction-table th:nth-child(4),
-.transaction-table td:nth-child(4) { width: 15%; } /* Amount */
+.transaction-table td:nth-child(4) { width: calc((100vw - 350px) * 0.15); min-width: 100px; } /* Amount */
 
 .transaction-table th:nth-child(5),
-.transaction-table td:nth-child(5) { width: 10%; } /* Debit */
+.transaction-table td:nth-child(5) { width: calc((100vw - 350px) * 0.10); min-width: 120px; } /* Debit */
 
 .transaction-table th:nth-child(6),
-.transaction-table td:nth-child(6) { width: 10%; } /* Credit */
+.transaction-table td:nth-child(6) { width: calc((100vw - 350px) * 0.10); min-width: 120px; } /* Credit */
+
+/* Note and Actions - fixed width, hidden until scroll */
+.transaction-table th:nth-child(7),
+.transaction-table td:nth-child(7) { width: 250px; min-width: 250px; } /* Note */
+
+.transaction-table th:nth-child(8),
+.transaction-table td:nth-child(8) { width: 100px; min-width: 100px; } /* Actions */
+
+/* Hide scrollbar and force LTR scroll direction */
+.transaction-scroll-container {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  direction: ltr !important; /* Always scroll from left to right */
+}
+
+/* Override RTL mode for scroll container specifically */
+.rtl-mode .transaction-scroll-container,
+.arabic-text.transaction-scroll-container,
+.rtl-mode.arabic-text .transaction-scroll-container {
+  direction: ltr !important; /* Force LTR scroll even in RTL mode */
+}
+
+.transaction-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
 
 /* Typography Consistency */
 .arabic-text {
@@ -535,11 +601,11 @@ border-radius: 8px !important;
 
 /* Color Scheme Standardization */
 .transaction-table thead {
-    background-color: hsl(var(--secondary)) !important;
+    background-color: hsl(var(--primary)) !important;
 }
 
 .transaction-table thead th {
-    color: hsl(var(--secondary-foreground)) !important;
+    color: hsl(var(--primary-foreground)) !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;

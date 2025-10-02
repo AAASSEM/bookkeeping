@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     // Header
-    businessDashboard: "Business Dashboard",
+    businessDashboard: "Bookkeeping",
     trackInventory: "Track your inventory, cash flow, and transactions",
     
     // Action Buttons
@@ -51,11 +51,15 @@ export const translations = {
     undo: "Undo",
     closingEntries: "Closing Entries",
     exportAllStatements: "Export All Statements",
+    exportSuccessMessage: "Financial statements have been exported successfully with professional color formatting!",
     addPartner: "Add Partner",
     clearData: "Clear Data",
     cancel: "Cancel",
     saveChanges: "Save Changes",
-    
+    delete: "Delete",
+    confirmDelete: "Confirm Delete",
+    deleteTransactionWarning: "Are you sure you want to delete this transaction? This action cannot be undone.",
+
     // Modals
     clickToEdit: "Click on any transaction row to edit it. Save or cancel your changes.",
     clearAllData: "Clear All Data",
@@ -106,6 +110,8 @@ export const translations = {
     closing: "Closing",
     manual: "Manual",
     investing: "Investing",
+    receivable: "Receivable",
+    payable: "Payable",
     
     // Transaction Modal
     saveTransaction: "Save Transaction",
@@ -128,8 +134,26 @@ export const translations = {
     partnerWithdrawal: "Partner Withdrawal",
     recordGain: "Record Gain",
     recordLoss: "Record Loss",
+    recordDeposit: "Record Deposit",
+    deposit: "Deposit",
+    capital: "Capital",
     transaction: "Transaction",
-    
+    accountPayable: "Account Payable",
+    accountReceivable: "Account Receivable",
+    creditor: "Creditor",
+    debtor: "Debtor",
+    creditorName: "Creditor Name",
+    debtorName: "Debtor Name",
+    enterCreditorName: "Enter creditor name",
+    enterDebtorName: "Enter debtor name",
+    customerName: "Customer Name",
+    enterCustomerName: "Enter customer name",
+    orderNumber: "Order Number",
+    enterOrderNumber: "Enter order number (optional)",
+    note: "Note",
+    addNote: "Add note...",
+    actions: "Actions",
+
     // Partner Setup Modal
     setupPartners: "Setup Partners",
     partnerName: "Partner Name",
@@ -139,6 +163,9 @@ export const translations = {
     setupBusiness: "Setup Business",
     enterPartnerName: "Enter partner name",
     enterInitialCapital: "Enter initial capital",
+    existingPartners: "Existing Partners",
+    addNewPartners: "Add new partners",
+    enterPartnersCapital: "Enter the partners and their initial capital amounts",
     
     // Financial Statements Modal
     financialStatements: "Financial Statements",
@@ -250,11 +277,20 @@ export const translations = {
     revenue: "Revenue",
     incomeSummary: "Income Summary",
     partnerCapital: "Partner Capital",
+    accountsReceivable: "Accounts Receivable",
+    accountsPayable: "Accounts Payable",
+    partnerDeposits: "Partner Deposits",
+    loansReceived: "Loans Received (Accounts Payable)",
+    loansGiven: "Loans Given (Accounts Receivable)",
     
     // Description Translation Keys
     sold: "Sold",
     purchased: "Purchased",
     capitalWithdrawalBy: "Capital withdrawal by",
+    initialCapitalFrom: "Initial capital from",
+    loanGivenTo: "Loan given to",
+    loanReceivedFrom: "Loan received from",
+    incomeSummaryToPartnerCapitals: "Income Summary to Partner Capitals",
     businessGain: "Business gain",
     businessLoss: "Business loss",
     boxed: "boxed",
@@ -265,7 +301,7 @@ export const translations = {
   },
   ar: {
     // Header
-    businessDashboard: "لوحة تحكم الأعمال",
+    businessDashboard: "مسك الدفاتر",
     trackInventory: "تتبع المخزون والتدفق النقدي والمعاملات",
     
     // Action Buttons
@@ -315,11 +351,15 @@ export const translations = {
     undo: "تراجع",
     closingEntries: "قيود الإقفال",
     exportAllStatements: "تصدير جميع البيانات",
+    exportSuccessMessage: "تم تصدير البيانات المالية بنجاح مع تنسيق احترافي بالألوان!",
     addPartner: "إضافة شريك",
     clearData: "مسح البيانات",
     cancel: "إلغاء",
     saveChanges: "حفظ التغييرات",
-    
+    delete: "حذف",
+    confirmDelete: "تأكيد الحذف",
+    deleteTransactionWarning: "هل أنت متأكد من حذف هذه المعاملة؟ لا يمكن التراجع عن هذا الإجراء.",
+
     // Modals
     clickToEdit: "انقر على أي صف معاملة لتعديلها. احفظ أو ألغِ التغييرات.",
     clearAllData: "مسح جميع البيانات",
@@ -370,6 +410,8 @@ export const translations = {
     closing: "إقفال",
     manual: "يدوي",
     investing: "استثمار",
+    receivable: "مستحق",
+    payable: "دائن",
     
     // Transaction Modal
     saveTransaction: "حفظ المعاملة",
@@ -392,8 +434,26 @@ export const translations = {
     partnerWithdrawal: "سحب الشريك",
     recordGain: "تسجيل ربح",
     recordLoss: "تسجيل خسارة",
+    recordDeposit: "تسجيل إيداع",
+    deposit: "إيداع",
+    capital: "رأس المال",
     transaction: "معاملة",
-    
+    accountPayable: "حسابات دائنة",
+    accountReceivable: "حسابات مدينة",
+    creditor: "الدائن",
+    debtor: "المدين",
+    creditorName: "اسم الدائن",
+    debtorName: "اسم المدين",
+    enterCreditorName: "أدخل اسم الدائن",
+    enterDebtorName: "أدخل اسم المدين",
+    customerName: "اسم العميل",
+    enterCustomerName: "أدخل اسم العميل",
+    orderNumber: "رقم الطلب",
+    enterOrderNumber: "أدخل رقم الطلب (اختياري)",
+    note: "ملاحظة",
+    addNote: "إضافة ملاحظة...",
+    actions: "إجراءات",
+
     // Partner Setup Modal
     setupPartners: "إعداد الشركاء",
     partnerName: "اسم الشريك",
@@ -401,6 +461,9 @@ export const translations = {
     addPartner: "إضافة شريك",
     removePartner: "إزالة الشريك",
     setupBusiness: "إعداد الأعمال",
+    existingPartners: "الشركاء الحاليون",
+    addNewPartners: "إضافة شركاء جدد",
+    enterPartnersCapital: "أدخل الشركاء ومبالغ رأس المال الأولية",
     enterPartnerName: "أدخل اسم الشريك",
     enterInitialCapital: "أدخل رأس المال الأولي",
     
@@ -514,11 +577,20 @@ export const translations = {
     revenue: "الإيرادات",
     incomeSummary: "ملخص الدخل",
     partnerCapital: "رأس مال الشريك",
+    accountsReceivable: "حسابات مدينة",
+    accountsPayable: "حسابات دائنة",
+    partnerDeposits: "إيداعات الشركاء",
+    loansReceived: "قروض مستلمة (حسابات دائنة)",
+    loansGiven: "قروض ممنوحة (حسابات مدينة)",
     
     // Description Translation Keys
     sold: "تم بيع",
     purchased: "تم شراء",
     capitalWithdrawalBy: "سحب رأس المال بواسطة",
+    initialCapitalFrom: "رأس المال الأولي من",
+    loanGivenTo: "قرض مُعطى إلى",
+    loanReceivedFrom: "قرض مستلم من",
+    incomeSummaryToPartnerCapitals: "ملخص الدخل إلى رأس مال الشركاء",
     businessGain: "ربح تجاري",
     businessLoss: "خسارة تجارية",
     boxed: "معلب",

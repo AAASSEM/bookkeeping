@@ -6,12 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useTranslation, type Language } from '@/utils/translations';
+import { FlaskConical, Droplets, Package, ShoppingCart, Banknote, CreditCard, Wallet, UserCircle } from 'lucide-react';
 
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss';
+  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss' | 'deposit' | 'payable' | 'receivable';
   inventory: any[];
   partners: { name: string; capital: number }[];
   language: Language;
@@ -35,7 +36,12 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
     paymentMethod: 'cash',
     isBoxed: false,
     boxPrice: '',
-    partnerName: ''
+    partnerName: '',
+    creditorName: '',
+    debtorName: '',
+    otherPersonName: '',
+    customerName: '',
+    orderNumber: ''
   });
 
   const handleSaleItemChange = (idx: number, field: string, value: any) => {
@@ -107,19 +113,26 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
         if (isNaN(totalSaleAmount) || totalSaleAmount <= 0) {
           throw new Error(`Invalid sale amount calculated for ${item.productName}. Please check the input values.`);
         }
-        
+
+        const paymentMethod = formData.paymentMethod || 'cash';
+        const debitAccount = paymentMethod === 'credit'
+          ? `Accounts Receivable - ${formData.customerName || 'Customer'} $${totalSaleAmount.toFixed(2)}`
+          : `Cash $${totalSaleAmount.toFixed(2)}`;
+
         return {
           type: 'sale',
-          description: `Sold ${quantity} ${item.productName}${item.isBoxed ? ' (boxed)' : ''}`,
+          description: `Sold ${quantity} ${item.productName}${item.isBoxed ? ' (boxed)' : ''}${formData.orderNumber ? ` - Order #${formData.orderNumber}` : ''}`,
           amount: totalSaleAmount,
-          debit: `Cash $${totalSaleAmount.toFixed(2)}`,
+          debit: debitAccount,
           credit: `Revenue $${totalSaleAmount.toFixed(2)}`,
           productName: item.productName,
           quantity: quantity,
           isBoxed: item.isBoxed,
           boxPrice: boxPrice,
           unitCost: selectedProduct.unitCost,
-          paymentMethod: formData.paymentMethod || 'cash'
+          paymentMethod: paymentMethod,
+          customerName: paymentMethod === 'credit' ? formData.customerName : undefined,
+          orderNumber: formData.orderNumber || undefined
         };
       });
       
@@ -225,6 +238,53 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
             credit: `Cash $${lossAmount.toFixed(2)}`
         };
         break;
+
+      case 'deposit':
+          const depositAmount = parseFloat(formData.amount || '0');
+          if (isNaN(depositAmount) || depositAmount <= 0) {
+            throw new Error('Invalid deposit amount. Please enter a valid number.');
+          }
+        transactionData = {
+          type: 'deposit',
+          description: `Capital deposit by ${formData.partnerName}`,
+            amount: depositAmount,
+            debit: `Cash $${depositAmount.toFixed(2)}`,
+            credit: `${formData.partnerName} Capital $${depositAmount.toFixed(2)}`,
+          partnerName: formData.partnerName
+        };
+        break;
+
+      case 'payable':
+          const payableAmount = parseFloat(formData.amount || '0');
+          if (isNaN(payableAmount) || payableAmount <= 0) {
+            throw new Error('Invalid payable amount. Please enter a valid number.');
+          }
+          const creditor = formData.creditorName === 'other' ? formData.otherPersonName : formData.creditorName;
+        transactionData = {
+          type: 'payable',
+          description: `Loan received from ${creditor}`,
+            amount: payableAmount,
+            debit: `Cash $${payableAmount.toFixed(2)}`,
+            credit: `Accounts Payable - ${creditor} $${payableAmount.toFixed(2)}`,
+          creditorName: creditor
+        };
+        break;
+
+      case 'receivable':
+          const receivableAmount = parseFloat(formData.amount || '0');
+          if (isNaN(receivableAmount) || receivableAmount <= 0) {
+            throw new Error('Invalid receivable amount. Please enter a valid number.');
+          }
+          const debtor = formData.debtorName === 'other' ? formData.otherPersonName : formData.debtorName;
+        transactionData = {
+          type: 'receivable',
+          description: `Loan given to ${debtor}`,
+            amount: receivableAmount,
+            debit: `Accounts Receivable - ${debtor} $${receivableAmount.toFixed(2)}`,
+            credit: `Cash $${receivableAmount.toFixed(2)}`,
+          debtorName: debtor
+        };
+        break;
     }
     }
     
@@ -245,7 +305,12 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
       paymentMethod: 'cash',
       isBoxed: false,
       boxPrice: '',
-      partnerName: ''
+      partnerName: '',
+      creditorName: '',
+      debtorName: '',
+      otherPersonName: '',
+      customerName: '',
+      orderNumber: ''
     });
   };
 
@@ -257,6 +322,9 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
       case 'withdrawal': return t('partnerWithdrawal');
       case 'gain': return t('recordGain');
       case 'loss': return t('recordLoss');
+      case 'deposit': return t('recordDeposit');
+      case 'payable': return t('accountPayable');
+      case 'receivable': return t('accountReceivable');
       default: return t('transaction');
     }
   };
@@ -272,21 +340,40 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
   const renderProductFields = () => {
     if (type === 'purchase') {
+      const productTypes = [
+        { value: 'bottles', label: t('bottles'), icon: FlaskConical, color: 'bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-700 hover:bg-purple-200 dark:hover:bg-purple-800' },
+        { value: 'oil', label: t('oil'), icon: Droplets, color: 'bg-amber-100 dark:bg-amber-900 border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-800' },
+        { value: 'box', label: t('box'), icon: Package, color: 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800' },
+        { value: 'other', label: t('other'), icon: ShoppingCart, color: 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800' }
+      ];
+
       return (
         <>
           <div>
-            <Label htmlFor="productType">{t('productType')}</Label>
-            <Select value={formData.productType} onValueChange={(value) => setFormData({...formData, productType: value, productName: '', quantity: '', grams: '', milliliters: ''})}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('selectProductType')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bottles">{t('bottles')}</SelectItem>
-                <SelectItem value="oil">{t('oil')}</SelectItem>
-                <SelectItem value="box">{t('box')}</SelectItem>
-                <SelectItem value="other">{t('other')}</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="mb-2 block text-sm">{t('productType')}</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {productTypes.map((product) => {
+                const Icon = product.icon;
+                const isSelected = formData.productType === product.value;
+                return (
+                  <button
+                    key={product.value}
+                    type="button"
+                    onClick={() => setFormData({...formData, productType: product.value, productName: '', quantity: '', grams: '', milliliters: ''})}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? `${product.color} ring-2 ring-offset-2 ring-primary`
+                        : 'bg-background border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <Icon className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                    <span className="text-xs font-medium" style={{ color: 'rgb(0, 0, 0)' }}>
+                      {product.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {formData.productType && (
@@ -377,31 +464,40 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
             {saleItems.map((item, idx) => (
               <div key={idx} className="border p-2 mb-2 rounded-md bg-muted/30">
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Label>{t('product')}</Label>
-                    <Select
-                      value={item.productName}
-                      onValueChange={value => {
-                        const selectedProduct = createdProducts.find(p => p.name === value);
-                        handleSaleItemChange(idx, 'productName', value);
-                        handleSaleItemChange(idx, 'price', selectedProduct?.sellingPrice?.toString() || '');
-                        handleSaleItemChange(idx, 'quantity', '');
-                      }}
-                    >
-              <SelectTrigger>
-                        <SelectValue placeholder={t('selectProductToSell')} />
-              </SelectTrigger>
-              <SelectContent>
-                        {createdProducts.map(product => (
-                          <SelectItem key={product.id} value={product.name}>
-                            {product.name} (Available: {product.quantity})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-                  <Button type="button" variant="destructive" onClick={() => removeSaleItem(idx)} disabled={saleItems.length === 1}>{t('remove')}</Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-sm">{t('product')}</Label>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeSaleItem(idx)} disabled={saleItems.length === 1}>{t('remove')}</Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {createdProducts.map(product => {
+                      const isSelected = item.productName === product.name;
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            handleSaleItemChange(idx, 'productName', product.name);
+                            handleSaleItemChange(idx, 'price', product.sellingPrice?.toString() || '');
+                            handleSaleItemChange(idx, 'quantity', '');
+                          }}
+                          className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700 ring-2 ring-offset-2 ring-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <FlaskConical className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                          <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                            {product.name}
+                          </span>
+                          <span className="text-[10px] text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                            {t('available')}: {product.quantity}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 {item.productName && (
                   <>
@@ -427,12 +523,14 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
                         className="bg-muted"
             />
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-3">
             <Checkbox
+                        id={`isBoxed-${idx}`}
                         checked={item.isBoxed}
                         onCheckedChange={checked => handleSaleItemChange(idx, 'isBoxed', checked as boolean)}
+                        className="border-2 border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
-                      <Label>{t('packageInBox')}</Label>
+                      <Label htmlFor={`isBoxed-${idx}`} className="cursor-pointer select-none">{t('packageInBox')}</Label>
           </div>
                     {item.isBoxed && (
             <div>
@@ -447,7 +545,7 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               />
             </div>
           )}
-                    <div className="bg-primary/20 p-3 rounded-lg">
+                    <div className="bg-primary/20 p-3 rounded-lg mt-3">
                       <p className="text-sm text-primary-foreground">
                         {t('totalSaleAmount')}: ${(parseFloat(item.quantity || '0') * parseFloat(item.price || '0') + parseFloat(item.boxPrice || '0')).toFixed(2)}
               </p>
@@ -460,6 +558,151 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
           <Button type="button" variant="outline" onClick={addSaleItem} className="w-full mb-2">+ {t('addAnotherItem')}</Button>
         </>
       );
+    } else if (type === 'deposit') {
+      return (
+        <>
+          <div>
+            <Label className="mb-2 block text-sm">{t('partner')}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {partners.map((partner) => {
+                const isSelected = formData.partnerName === partner.name;
+                return (
+                  <button
+                    key={partner.name}
+                    type="button"
+                    onClick={() => setFormData({...formData, partnerName: partner.name})}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-700 ring-2 ring-offset-2 ring-primary'
+                        : 'bg-background border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                    <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                      {partner.name}
+                    </span>
+                    <span className="text-[10px] text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                      {t('capital')}: ${partner.capital.toFixed(2)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      );
+    } else if (type === 'payable') {
+      return (
+        <>
+          <div>
+            <Label className="mb-2 block text-sm">{t('creditor')}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {partners.map((partner) => {
+                const isSelected = formData.creditorName === partner.name;
+                return (
+                  <button
+                    key={partner.name}
+                    type="button"
+                    onClick={() => setFormData({...formData, creditorName: partner.name, otherPersonName: ''})}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? 'bg-rose-100 dark:bg-rose-900 border-rose-300 dark:border-rose-700 ring-2 ring-offset-2 ring-primary'
+                        : 'bg-background border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                    <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                      {partner.name}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, creditorName: 'other'})}
+                className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                  formData.creditorName === 'other'
+                    ? 'bg-rose-100 dark:bg-rose-900 border-rose-300 dark:border-rose-700 ring-2 ring-offset-2 ring-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                }`}
+              >
+                <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                  {t('other')}
+                </span>
+              </button>
+            </div>
+          </div>
+          {formData.creditorName === 'other' && (
+            <div>
+              <Label htmlFor="otherPersonName">{t('creditorName')}</Label>
+              <Input
+                id="otherPersonName"
+                value={formData.otherPersonName}
+                onChange={(e) => setFormData({...formData, otherPersonName: e.target.value})}
+                placeholder={t('enterCreditorName')}
+                required
+              />
+            </div>
+          )}
+        </>
+      );
+    } else if (type === 'receivable') {
+      return (
+        <>
+          <div>
+            <Label className="mb-2 block text-sm">{t('debtor')}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {partners.map((partner) => {
+                const isSelected = formData.debtorName === partner.name;
+                return (
+                  <button
+                    key={partner.name}
+                    type="button"
+                    onClick={() => setFormData({...formData, debtorName: partner.name, otherPersonName: ''})}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? 'bg-teal-100 dark:bg-teal-900 border-teal-300 dark:border-teal-700 ring-2 ring-offset-2 ring-primary'
+                        : 'bg-background border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                    <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                      {partner.name}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, debtorName: 'other'})}
+                className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                  formData.debtorName === 'other'
+                    ? 'bg-teal-100 dark:bg-teal-900 border-teal-300 dark:border-teal-700 ring-2 ring-offset-2 ring-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                }`}
+              >
+                <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                  {t('other')}
+                </span>
+              </button>
+            </div>
+          </div>
+          {formData.debtorName === 'other' && (
+            <div>
+              <Label htmlFor="otherPersonName">{t('debtorName')}</Label>
+              <Input
+                id="otherPersonName"
+                value={formData.otherPersonName}
+                onChange={(e) => setFormData({...formData, otherPersonName: e.target.value})}
+                placeholder={t('enterDebtorName')}
+                required
+              />
+            </div>
+          )}
+        </>
+      );
     }
 
     return null;
@@ -467,11 +710,11 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={type === 'sale' ? "sm:max-w-2xl max-h-[85vh] overflow-y-auto" : "sm:max-w-md"}>
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {renderProductFields()}
           
@@ -499,8 +742,20 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               </p>
             </div>
           )}
-          
-          {(type === 'expense' || type === 'withdrawal' || type === 'gain' || type === 'loss') && (
+
+          {type === 'sale' && (
+            <div>
+              <Label htmlFor="orderNumber">{t('orderNumber')}</Label>
+              <Input
+                id="orderNumber"
+                value={formData.orderNumber}
+                onChange={(e) => setFormData({...formData, orderNumber: e.target.value})}
+                placeholder={t('enterOrderNumber')}
+              />
+            </div>
+          )}
+
+          {(type === 'expense' || type === 'withdrawal' || type === 'gain' || type === 'loss' || type === 'deposit' || type === 'payable' || type === 'receivable') && (
             <>
               {(type === 'expense' || type === 'gain' || type === 'loss') && (
                 <div>
@@ -517,19 +772,32 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
 
               {type === 'withdrawal' && (
                 <div>
-                  <Label htmlFor="partner">{t('partner')}</Label>
-                  <Select value={formData.partnerName} onValueChange={(value) => setFormData({...formData, partnerName: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectPartner')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {partners.map((partner) => (
-                        <SelectItem key={partner.name} value={partner.name}>
-                          {partner.name} (Capital: ${partner.capital.toFixed(2)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="mb-2 block text-sm">{t('partner')}</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {partners.map((partner) => {
+                      const isSelected = formData.partnerName === partner.name;
+                      return (
+                        <button
+                          key={partner.name}
+                          type="button"
+                          onClick={() => setFormData({...formData, partnerName: partner.name})}
+                          className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-700 ring-2 ring-offset-2 ring-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <UserCircle className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                          <span className="text-xs font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                            {partner.name}
+                          </span>
+                          <span className="text-[10px] text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                            {t('capital')}: ${partner.capital.toFixed(2)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               
@@ -547,19 +815,52 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
               </div>
             </>
           )}
-          
-          <div>
-            <Label htmlFor="payment">{t('paymentMethod')}</Label>
-            <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({...formData, paymentMethod: value})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">{t('cash')}</SelectItem>
-                <SelectItem value="credit">{t('credit')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
+          {type !== 'deposit' && type !== 'payable' && type !== 'receivable' && type !== 'gain' && type !== 'loss' && type !== 'withdrawal' && (
+            <>
+              <div>
+                <Label className="mb-2 block text-sm">{t('paymentMethod')}</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'cash', label: t('cash'), icon: Banknote, color: 'bg-emerald-100 dark:bg-emerald-900 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800' },
+                    { value: 'credit', label: t('credit'), icon: CreditCard, color: 'bg-sky-100 dark:bg-sky-900 border-sky-300 dark:border-sky-700 hover:bg-sky-200 dark:hover:bg-sky-800' }
+                  ].map((payment) => {
+                    const Icon = payment.icon;
+                    const isSelected = formData.paymentMethod === payment.value;
+                    return (
+                      <button
+                        key={payment.value}
+                        type="button"
+                        onClick={() => setFormData({...formData, paymentMethod: payment.value})}
+                        className={`p-3 rounded-lg border-2 flex flex-col items-center gap-1.5 transition-all ${
+                          isSelected
+                            ? `${payment.color} ring-2 ring-offset-2 ring-primary`
+                            : 'bg-background border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Icon className="h-6 w-6" style={{ color: 'rgb(0, 0, 0)' }} />
+                        <span className="text-xs font-medium" style={{ color: 'rgb(0, 0, 0)' }}>
+                          {payment.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {type === 'sale' && formData.paymentMethod === 'credit' && (
+                <div>
+                  <Label htmlFor="customerName">{t('customerName')}</Label>
+                  <Input
+                    id="customerName"
+                    value={formData.customerName}
+                    onChange={(e) => setFormData({...formData, customerName: e.target.value})}
+                    placeholder={t('enterCustomerName')}
+                    required
+                  />
+                </div>
+              )}
+            </>
+          )}
           
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">

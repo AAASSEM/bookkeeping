@@ -98,11 +98,23 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
       .filter(t => t.type === 'manual' && t.debit === 'Cash' && t.credit.includes('Capital'))
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+    const cashFromDeposits = transactions
+      .filter(t => t.type === 'deposit')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const cashFromLoans = transactions
+      .filter(t => t.type === 'payable')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
     const cashPaidForWithdrawals = transactions
       .filter(t => t.type === 'withdrawal' && t.paymentMethod === 'cash')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    const netCashFromFinancingActivities = cashFromCapitalContributions - cashPaidForWithdrawals;
+    const cashPaidForLoansGiven = transactions
+      .filter(t => t.type === 'receivable')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const netCashFromFinancingActivities = cashFromCapitalContributions + cashFromDeposits + cashFromLoans - cashPaidForWithdrawals - cashPaidForLoansGiven;
 
     // NET CHANGE IN CASH
     const netChangeInCash = netCashFromOperatingActivities + netCashFromInvestingActivities + netCashFromFinancingActivities;
@@ -158,8 +170,20 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <span>${(Number(cashFromCapitalContributions) || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
+            <span>{t('partnerDeposits')}</span>
+            <span>${(Number(cashFromDeposits) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>{t('loansReceived')}</span>
+            <span>${(Number(cashFromLoans) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
             <span>{t('cashPaidForWithdrawals')}</span>
             <span>${(Number(cashPaidForWithdrawals) || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>{t('loansGiven')}</span>
+            <span>${(Number(cashPaidForLoansGiven) || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between font-semibold mt-2">
             <span>{t('netCashFlowFromFinancingActivities')}</span>
@@ -296,6 +320,90 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <td className="text-right py-2 px-4">-</td>
             <td className="text-right py-2 px-4">${totalGains.toFixed(2)}</td>
           </tr>
+
+          {/* Accounts Receivable */}
+          {(() => {
+            const accountsReceivableMap: Record<string, number> = {};
+            // Include both 'receivable' type and credit sales
+            transactions.filter(t => t.type === 'receivable').forEach(t => {
+              // Try to extract name from debitName field or from debit string
+              let debtor = t.debtorName;
+              if (!debtor && t.debit) {
+                const match = t.debit.match(/Accounts Receivable - (.+?) \$/);
+                debtor = match ? match[1] : 'Unknown';
+              }
+              debtor = debtor || 'Unknown';
+              accountsReceivableMap[debtor] = (accountsReceivableMap[debtor] || 0) + t.amount;
+            });
+            transactions.filter(t => t.type === 'sale' && t.paymentMethod === 'credit').forEach(t => {
+              // Try to extract name from customerName field or from debit string
+              let customer = t.customerName;
+              if (!customer && t.debit) {
+                const match = t.debit.match(/Accounts Receivable - (.+?) \$/);
+                customer = match ? match[1] : 'Customer';
+              }
+              customer = customer || 'Customer';
+              accountsReceivableMap[customer] = (accountsReceivableMap[customer] || 0) + t.amount;
+            });
+            const totalAccountsReceivable = Object.values(accountsReceivableMap).reduce((sum, val) => sum + val, 0);
+
+            if (totalAccountsReceivable > 0) {
+              return (
+                <React.Fragment>
+                  <tr className="border-b font-semibold">
+                    <td className="py-2 px-4">{t('accountsReceivable')}</td>
+                    <td className="text-right py-2 px-4">${totalAccountsReceivable.toFixed(2)}</td>
+                    <td className="text-right py-2 px-4">-</td>
+                  </tr>
+                  {Object.entries(accountsReceivableMap).map(([debtor, amount]) => (
+                    <tr key={debtor} className="border-b">
+                      <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{debtor}</td>
+                      <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
+                      <td className="text-right py-2 px-4">-</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            }
+            return null;
+          })()}
+
+          {/* Accounts Payable */}
+          {(() => {
+            const accountsPayableMap: Record<string, number> = {};
+            transactions.filter(t => t.type === 'payable').forEach(t => {
+              // Try to extract name from creditorName field or from credit string
+              let creditor = t.creditorName;
+              if (!creditor && t.credit) {
+                const match = t.credit.match(/Accounts Payable - (.+?) \$/);
+                creditor = match ? match[1] : 'Unknown';
+              }
+              creditor = creditor || 'Unknown';
+              accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
+            });
+            const totalAccountsPayable = Object.values(accountsPayableMap).reduce((sum, val) => sum + val, 0);
+
+            if (totalAccountsPayable > 0) {
+              return (
+                <React.Fragment>
+                  <tr className="border-b font-semibold">
+                    <td className="py-2 px-4">{t('accountsPayable')}</td>
+                    <td className="text-right py-2 px-4">-</td>
+                    <td className="text-right py-2 px-4">${totalAccountsPayable.toFixed(2)}</td>
+                  </tr>
+                  {Object.entries(accountsPayableMap).map(([creditor, amount]) => (
+                    <tr key={creditor} className="border-b">
+                      <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{creditor}</td>
+                      <td className="text-right py-2 px-4">-</td>
+                      <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            }
+            return null;
+          })()}
+
           {partners.map((partner) => (
             <tr key={partner.name} className="border-b">
               <td className="py-2 px-4">{partner.name} {t('capital')}</td>
@@ -306,10 +414,18 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
           <tr className="border-t-2 font-bold">
             <td className="py-2 px-4">{t('total')}</td>
             <td className="text-right py-2 px-4">
-              ${(cash + totalInventoryValue + totalExpenses + totalLosses).toFixed(2)}
+              ${(() => {
+                // Include both 'receivable' type and credit sales
+                const accountsReceivableTotal = transactions.filter(t => t.type === 'receivable').reduce((sum, t) => sum + t.amount, 0);
+                const creditSalesTotal = transactions.filter(t => t.type === 'sale' && t.paymentMethod === 'credit').reduce((sum, t) => sum + t.amount, 0);
+                return (cash + totalInventoryValue + totalExpenses + totalLosses + accountsReceivableTotal + creditSalesTotal).toFixed(2);
+              })()}
             </td>
             <td className="text-right py-2 px-4">
-              ${(grossProfit + totalCapital + totalGains).toFixed(2)}
+              ${(() => {
+                const accountsPayableTotal = transactions.filter(t => t.type === 'payable').reduce((sum, t) => sum + t.amount, 0);
+                return (grossProfit + totalCapital + totalGains + accountsPayableTotal).toFixed(2);
+              })()}
             </td>
           </tr>
         </tbody>
@@ -368,51 +484,123 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
     </div>
   );
 
-  const renderBalanceSheet = () => (
-    <div className="grid grid-cols-2 gap-8">
-      <div>
-        <h3 className="font-semibold mb-4">{t('assets')}</h3>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span>{t('cash')}</span>
-            <span>${cash.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>{t('inventory')}</span>
-            <span>${totalInventoryValue.toFixed(2)}</span>
-          </div>
-          <div className="border-t pt-2 font-semibold">
+  const renderBalanceSheet = () => {
+    // Calculate Accounts Receivable
+    const accountsReceivableMap: Record<string, number> = {};
+    // Include both 'receivable' type and credit sales
+    transactions.filter(t => t.type === 'receivable').forEach(t => {
+      // Try to extract name from debitName field or from debit string
+      let debtor = t.debtorName;
+      if (!debtor && t.debit) {
+        const match = t.debit.match(/Accounts Receivable - (.+?) \$/);
+        debtor = match ? match[1] : 'Unknown';
+      }
+      debtor = debtor || 'Unknown';
+      accountsReceivableMap[debtor] = (accountsReceivableMap[debtor] || 0) + t.amount;
+    });
+    transactions.filter(t => t.type === 'sale' && t.paymentMethod === 'credit').forEach(t => {
+      // Try to extract name from customerName field or from debit string
+      let customer = t.customerName;
+      if (!customer && t.debit) {
+        const match = t.debit.match(/Accounts Receivable - (.+?) \$/);
+        customer = match ? match[1] : 'Customer';
+      }
+      customer = customer || 'Customer';
+      accountsReceivableMap[customer] = (accountsReceivableMap[customer] || 0) + t.amount;
+    });
+    const totalAccountsReceivable = Object.values(accountsReceivableMap).reduce((sum, val) => sum + val, 0);
+
+    // Calculate Accounts Payable
+    const accountsPayableMap: Record<string, number> = {};
+    transactions.filter(t => t.type === 'payable').forEach(t => {
+      // Try to extract name from creditorName field or from credit string
+      let creditor = t.creditorName;
+      if (!creditor && t.credit) {
+        const match = t.credit.match(/Accounts Payable - (.+?) \$/);
+        creditor = match ? match[1] : 'Unknown';
+      }
+      creditor = creditor || 'Unknown';
+      accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
+    });
+    const totalAccountsPayable = Object.values(accountsPayableMap).reduce((sum, val) => sum + val, 0);
+
+    const totalAssets = cash + totalInventoryValue + totalAccountsReceivable;
+    const totalLiabilitiesEquity = totalAccountsPayable + netIncome + totalCapital;
+
+    return (
+      <div className="grid grid-cols-2 gap-8">
+        <div>
+          <h3 className="font-semibold mb-4">{t('assets')}</h3>
+          <div className="space-y-2">
             <div className="flex justify-between">
-            <span>{t('totalAssets')}</span>
-            <span>${(cash + totalInventoryValue).toFixed(2)}</span>
+              <span>{t('cash')}</span>
+              <span>${cash.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t('inventory')}</span>
+              <span>${totalInventoryValue.toFixed(2)}</span>
+            </div>
+            {totalAccountsReceivable > 0 && (
+              <>
+                <div className="flex justify-between font-semibold">
+                  <span>{t('accountsReceivable')}</span>
+                  <span>${totalAccountsReceivable.toFixed(2)}</span>
+                </div>
+                {Object.entries(accountsReceivableMap).map(([debtor, amount]) => (
+                  <div key={debtor} className="flex justify-between pl-4 text-sm text-slate-600 dark:text-slate-400">
+                    <span>{debtor}</span>
+                    <span>${amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            <div className="border-t pt-2 font-semibold">
+              <div className="flex justify-between">
+                <span>{t('totalAssets')}</span>
+                <span>${totalAssets.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-semibold mb-4">{t('liabilitiesEquity')}</h3>
+          <div className="space-y-2">
+            {totalAccountsPayable > 0 && (
+              <>
+                <div className="flex justify-between font-semibold">
+                  <span>{t('accountsPayable')}</span>
+                  <span>${totalAccountsPayable.toFixed(2)}</span>
+                </div>
+                {Object.entries(accountsPayableMap).map(([creditor, amount]) => (
+                  <div key={creditor} className="flex justify-between pl-4 text-sm text-slate-600 dark:text-slate-400">
+                    <span>{creditor}</span>
+                    <span>${amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            <div className="flex justify-between">
+              <span>{t('retainedEarnings')}</span>
+              <span>${netIncome.toFixed(2)}</span>
+            </div>
+            {partners.map((partner) => (
+              <div key={partner.name} className="flex justify-between">
+                <span>{partner.name} {t('capital')}</span>
+                <span>${partner.capital.toFixed(2)}</span>
+              </div>
+            ))}
+            <div className="border-t pt-2 font-semibold">
+              <div className="flex justify-between">
+                <span>{t('totalLiabilitiesEquity')}</span>
+                <span>${totalLiabilitiesEquity.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <div>
-        <h3 className="font-semibold mb-4">{t('liabilitiesEquity')}</h3>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span>{t('retainedEarnings')}</span>
-            <span>${netIncome.toFixed(2)}</span>
-          </div>
-          {partners.map((partner) => (
-            <div key={partner.name} className="flex justify-between">
-              <span>{partner.name} {t('capital')}</span>
-              <span>${partner.capital.toFixed(2)}</span>
-            </div>
-          ))}
-          <div className="border-t pt-2 font-semibold">
-          <div className="flex justify-between">
-              <span>{t('totalLiabilitiesEquity')}</span>
-              <span>${(netIncome + totalCapital).toFixed(2)}</span>
-          </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderGeneralJournal = () => (
     <div className="overflow-x-auto">
@@ -480,6 +668,7 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <th className="text-left py-2">{t('date')}</th>
             <th className="text-left py-2">{t('product')}</th>
             <th className="text-right py-2">{t('quantity')}</th>
+            <th className="text-right py-2">{t('unitCost')}</th>
             <th className="text-right py-2">{t('unitPrice')}</th>
             <th className="text-right py-2">{t('totalAmount')}</th>
           </tr>
@@ -494,6 +683,7 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
                   <td className="py-2 px-4">{transaction.date}</td>
                   <td className="py-2 px-4">{transaction.productName || t('unknown')}</td>
                   <td className="text-right py-2 px-4">{transaction.quantity || 1}</td>
+                  <td className="text-right py-2 px-4">${(transaction.unitCost || 0).toFixed(2)}</td>
                   <td className="text-right py-2 px-4">${unitPrice.toFixed(2)}</td>
                   <td className="text-right py-2 px-4">${transaction.amount.toFixed(2)}</td>
                 </tr>

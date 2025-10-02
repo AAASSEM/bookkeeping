@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation, type Language } from '@/utils/translations';
+import { FlaskConical, Droplets } from 'lucide-react';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -103,11 +104,11 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory, langu
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[900px]">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <DialogTitle>{t('createProduct')}</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
@@ -136,24 +137,34 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory, langu
           </div>
 
               <div>
-                <Label htmlFor="bottleType">{t('bottleType')}</Label>
-                <Select
-                  value={formData.bottleType}
-                  onValueChange={(value) => setFormData({...formData, bottleType: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectBottleType')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bottleTypes.map((bottle) => (
-                      <SelectItem key={bottle.name} value={bottle.name}>
-                        {bottle.name} ({t('available')}: {bottle.quantity}, {t('cost')}: ${bottle.unitCost.toFixed(2)} {t('each')})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2 block text-sm">{t('bottleType')}</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {bottleTypes.map((bottle) => {
+                    const isSelected = formData.bottleType === bottle.name;
+                    return (
+                      <button
+                        key={bottle.name}
+                        type="button"
+                        onClick={() => setFormData({...formData, bottleType: bottle.name})}
+                        className={`p-2 rounded-lg border-2 flex flex-col items-center gap-1 transition-all ${
+                          isSelected
+                            ? 'bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-700 ring-2 ring-offset-2 ring-primary'
+                            : 'bg-background border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <FlaskConical className="h-5 w-5" style={{ color: 'rgb(0, 0, 0)' }} />
+                        <span className="text-[10px] font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                          {bottle.name}
+                        </span>
+                        <span className="text-[9px] text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                          {t('available')}: {bottle.quantity}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
           </div>
-          
+
           <div>
             <Label htmlFor="bottlesUsed">{t('bottlesUsed')}</Label>
             <Input
@@ -171,24 +182,34 @@ export const CreateProductModal = ({ isOpen, onClose, onSubmit, inventory, langu
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="oilType">{t('oilType')}</Label>
-                <Select
-                  value={formData.oilType}
-                  onValueChange={(value) => setFormData({...formData, oilType: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectOilType')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {oilTypes.map((oil) => (
-                      <SelectItem key={oil.name} value={oil.name}>
-                        {oil.name} ({t('available')}: {oil.grams}g, {t('cost')}: ${oil.unitCost.toFixed(2)} {t('perGram')})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2 block text-sm">{t('oilType')}</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {oilTypes.map((oil) => {
+                    const isSelected = formData.oilType === oil.name;
+                    return (
+                      <button
+                        key={oil.name}
+                        type="button"
+                        onClick={() => setFormData({...formData, oilType: oil.name})}
+                        className={`p-2 rounded-lg border-2 flex flex-col items-center gap-1 transition-all ${
+                          isSelected
+                            ? 'bg-amber-100 dark:bg-amber-900 border-amber-300 dark:border-amber-700 ring-2 ring-offset-2 ring-primary'
+                            : 'bg-background border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Droplets className="h-5 w-5" style={{ color: 'rgb(0, 0, 0)' }} />
+                        <span className="text-[10px] font-medium text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                          {oil.name}
+                        </span>
+                        <span className="text-[9px] text-center" style={{ color: 'rgb(0, 0, 0)' }}>
+                          {t('available')}: {oil.grams}g
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
           </div>
-          
+
           <div>
             <Label htmlFor="oilUsed">{t('oilUsed')}</Label>
             <Input
