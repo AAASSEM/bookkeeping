@@ -167,18 +167,26 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
             throw new Error('Invalid purchase amount calculated. Please check the input values.');
         }
         
+        // Handle payment method for purchases (cash vs credit)
+        const paymentMethod = formData.paymentMethod || 'cash';
+        const creditAccount = paymentMethod === 'credit'
+          ? `Accounts Payable - ${formData.creditorName || 'Supplier'} $${totalAmount.toFixed(2)}`
+          : `Cash $${totalAmount.toFixed(2)}`;
+
         transactionData = {
           type: 'purchase',
           description: `Purchased ${formData.productType === 'oil' ? formData.grams + 'g' : formData.quantity} ${formData.productType} - ${formData.productName}`,
           amount: totalAmount,
           debit: `Inventory $${totalAmount.toFixed(2)}`,
-          credit: `Cash $${totalAmount.toFixed(2)}`,
+          credit: creditAccount,
           productType: formData.productType,
           productName: formData.productName,
           quantity: formData.productType === 'oil' ? parseFloat(formData.grams || '0') : quantity,
           grams: formData.productType === 'oil' ? parseFloat(formData.grams || '0') : undefined,
           milliliters: formData.milliliters ? parseFloat(formData.milliliters || '0') : undefined,
-          unitCost: price
+          unitCost: price,
+          paymentMethod: paymentMethod,
+          creditorName: paymentMethod === 'credit' ? formData.creditorName : undefined
         };
         break;
           
@@ -855,6 +863,18 @@ export const TransactionModal = ({ isOpen, onClose, onSubmit, type, inventory, p
                     value={formData.customerName}
                     onChange={(e) => setFormData({...formData, customerName: e.target.value})}
                     placeholder={t('enterCustomerName')}
+                    required
+                  />
+                </div>
+              )}
+              {type === 'purchase' && formData.paymentMethod === 'credit' && (
+                <div>
+                  <Label htmlFor="creditorName">{t('creditorName')}</Label>
+                  <Input
+                    id="creditorName"
+                    value={formData.creditorName}
+                    onChange={(e) => setFormData({...formData, creditorName: e.target.value})}
+                    placeholder={t('enterCreditorName')}
                     required
                   />
                 </div>

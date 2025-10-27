@@ -161,6 +161,7 @@ const generateBalanceSheetData = (inventory: InventoryItem[], cash: number, part
 
   // Calculate Accounts Payable (grouped by creditor)
   const accountsPayableMap: Record<string, number> = {};
+  // Include both 'payable' type transactions and credit purchases
   transactions.filter(t => t.type === 'payable').forEach(t => {
     // Try to extract name from creditorName field or from credit string
     let creditor = t.creditorName;
@@ -169,6 +170,17 @@ const generateBalanceSheetData = (inventory: InventoryItem[], cash: number, part
       creditor = match ? match[1] : 'Unknown';
     }
     creditor = creditor || 'Unknown';
+    accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
+  });
+  // Also include credit purchases in accounts payable
+  transactions.filter(t => t.type === 'purchase' && t.paymentMethod === 'credit').forEach(t => {
+    // Try to extract name from creditorName field or from credit string
+    let creditor = t.creditorName;
+    if (!creditor && t.credit) {
+      const match = t.credit.match(/Accounts Payable - (.+?) \$/);
+      creditor = match ? match[1] : 'Supplier';
+    }
+    creditor = creditor || 'Supplier';
     accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
   });
   const totalAccountsPayable = Object.values(accountsPayableMap).reduce((sum, val) => sum + val, 0);
@@ -326,7 +338,7 @@ const generateCashFlowStatementData = (transactions: Transaction[], currentCash:
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const cashPaidForPurchases = transactions
-    .filter(t => t.type === 'purchase')
+    .filter(t => t.type === 'purchase' && t.paymentMethod === 'cash')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const cashPaidForExpenses = transactions
@@ -480,6 +492,7 @@ const generateTrialBalanceData = (transactions: Transaction[], inventory: Invent
 
   // Calculate Accounts Payable (grouped by creditor)
   const accountsPayableMap: Record<string, number> = {};
+  // Include both 'payable' type transactions and credit purchases
   transactions.filter(t => t.type === 'payable').forEach(t => {
     // Try to extract name from creditorName field or from credit string
     let creditor = t.creditorName;
@@ -488,6 +501,17 @@ const generateTrialBalanceData = (transactions: Transaction[], inventory: Invent
       creditor = match ? match[1] : 'Unknown';
     }
     creditor = creditor || 'Unknown';
+    accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
+  });
+  // Also include credit purchases in accounts payable
+  transactions.filter(t => t.type === 'purchase' && t.paymentMethod === 'credit').forEach(t => {
+    // Try to extract name from creditorName field or from credit string
+    let creditor = t.creditorName;
+    if (!creditor && t.credit) {
+      const match = t.credit.match(/Accounts Payable - (.+?) \$/);
+      creditor = match ? match[1] : 'Supplier';
+    }
+    creditor = creditor || 'Supplier';
     accountsPayableMap[creditor] = (accountsPayableMap[creditor] || 0) + t.amount;
   });
   const totalAccountsPayable = Object.values(accountsPayableMap).reduce((sum, val) => sum + val, 0);
@@ -951,12 +975,13 @@ export const Dashboard = () => {
         partnerName: transactionData.partnerName,
         paymentMethod: transactionData.paymentMethod || 'cash' // Default to 'cash' if not specified
       };
-      console.log('New transaction created in Dashboard:', newTransaction);
 
       // Update cash based on transaction type
     if (transactionData.type === 'purchase') {
-        // Update cash
-      setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+        // Only update cash if it's a cash purchase (not credit)
+        if (transactionData.paymentMethod === 'cash') {
+          setCash(prev => parseFloat((prev - transactionData.amount).toFixed(2)));
+        }
 
         // Update inventory for purchase transactions
         if (transactionData.productName && transactionData.quantity && transactionData.unitCost) {
@@ -1207,7 +1232,10 @@ export const Dashboard = () => {
       setCash(prev => parseFloat((prev - transaction.amount).toFixed(2)));
       setTotalSales(prev => parseFloat((prev - transaction.amount).toFixed(2)));
     } else if (transaction.type === 'purchase') {
-      setCash(prev => parseFloat((prev + transaction.amount).toFixed(2)));
+      // Only refund cash if it was a cash purchase
+      if (transaction.paymentMethod === 'cash') {
+        setCash(prev => parseFloat((prev + transaction.amount).toFixed(2)));
+      }
       // Update inventory - reduce total value
       const updatedInventory = inventory.map(item => {
         if (item.name === transaction.productName) {
@@ -1932,7 +1960,9 @@ export const Dashboard = () => {
         updatedTransaction.credit = `Sales $${updatedTransaction.amount.toFixed(2)}`;
       } else if (updatedTransaction.type === 'purchase') {
         updatedTransaction.debit = `Inventory ${updatedTransaction.productName} $${updatedTransaction.amount.toFixed(2)}`;
-        updatedTransaction.credit = `Cash $${updatedTransaction.amount.toFixed(2)}`;
+        updatedTransaction.credit = updatedTransaction.paymentMethod === 'credit'
+          ? `Accounts Payable - ${updatedTransaction.creditorName || 'Supplier'} $${updatedTransaction.amount.toFixed(2)}`
+          : `Cash $${updatedTransaction.amount.toFixed(2)}`;
       } else if (updatedTransaction.type === 'expense') {
         updatedTransaction.debit = `Expense $${updatedTransaction.amount.toFixed(2)}`;
         updatedTransaction.credit = `Cash $${updatedTransaction.amount.toFixed(2)}`;
@@ -1979,7 +2009,21 @@ export const Dashboard = () => {
         setCash(prev => parseFloat((prev - oldTransaction.amount + updatedTransaction.amount).toFixed(2)));
         setTotalSales(prev => parseFloat((prev - oldTransaction.amount + updatedTransaction.amount).toFixed(2)));
       } else if (updatedTransaction.type === 'purchase') {
-        setCash(prev => parseFloat((prev + oldTransaction.amount - updatedTransaction.amount).toFixed(2)));
+        // Handle cash updates based on payment method change
+        const wasCashPurchase = oldTransaction.paymentMethod === 'cash';
+        const isCashPurchase = updatedTransaction.paymentMethod === 'cash';
+
+        if (wasCashPurchase && !isCashPurchase) {
+          // Changed from cash to credit - refund the old amount
+          setCash(prev => parseFloat((prev + oldTransaction.amount).toFixed(2)));
+        } else if (!wasCashPurchase && isCashPurchase) {
+          // Changed from credit to cash - deduct the new amount
+          setCash(prev => parseFloat((prev - updatedTransaction.amount).toFixed(2)));
+        } else if (wasCashPurchase && isCashPurchase) {
+          // Both cash purchases - adjust for amount difference
+          setCash(prev => parseFloat((prev + oldTransaction.amount - updatedTransaction.amount).toFixed(2)));
+        }
+        // If both are credit, no cash change needed
 
         // Update inventory
         const updatedInventory = inventory.map(item => {

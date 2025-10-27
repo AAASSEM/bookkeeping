@@ -1,9 +1,7 @@
+
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm install:*)"
-    ],
-    "deny": [],
-    "ask": []
+  "env": {
+      "ANTHROPIC_AUTH_TOKEN": "1b93ba00cd0740949d6be236f58ee23c.mNVjcc29IDQaaMrj",
+      "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
   }
 }
