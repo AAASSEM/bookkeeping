@@ -307,7 +307,7 @@ border-radius: 8px !important;
     background-color: hsl(182 85% 30%) !important;
 }
 
-/* Override any remaining blue elements in dark mode */
+/* Override any remaining blue elements in dark mode, but exclude transaction type text */
 .dark-mode [class*="blue"]:not([class*="blue-gray"]):not([class*="blue-50"]) {
     background-color: hsl(var(--phthalo-green)) !important;
     color: hsl(var(--background)) !important;
@@ -625,14 +625,39 @@ button:focus-visible {
     transition: background-color 0.2s ease !important;
 }
 
-/* Text colors for different transaction types */
-.transaction-type-purchase { color: hsl(215 100% 31.2%) !important; }
-.transaction-type-sale { color: hsl(120 60% 40%) !important; }
-.transaction-type-expense { color: hsl(355 78% 56.7%) !important; }
-.transaction-type-withdrawal { color: hsl(40 100% 50%) !important; }
-.transaction-type-gain { color: hsl(120 60% 40%) !important; }
-.transaction-type-loss { color: hsl(355 78% 56.7%) !important; }
-.transaction-type-create { color: hsl(182 85% 35%) !important; }
+
+
+/* Light mode transaction type colors */
+.transaction-type-purchase { color: hsl(215 100% 31.2%) !important; } /* Blue */
+.transaction-type-sale { color: hsl(120 60% 40%) !important; } /* Green */
+.transaction-type-expense { color: hsl(355 78% 56.7%) !important; } /* Red */
+.transaction-type-withdrawal { color: hsl(40 100% 50%) !important; } /* Orange */
+.transaction-type-investing { color: hsl(262 83% 58%) !important; } /* Purple */
+.transaction-type-deposit { color: hsl(243 75% 59%) !important; } /* Indigo */
+.transaction-type-gain { color: hsl(120 60% 40%) !important; } /* Green */
+.transaction-type-loss { color: hsl(355 78% 56.7%) !important; } /* Red */
+.transaction-type-payable { color: hsl(48 96% 53%) !important; } /* Yellow */
+.transaction-type-receivable { color: hsl(188 86% 53%) !important; } /* Cyan */
+.transaction-type-create { color: hsl(182 85% 35%) !important; } /* Teal */
+.transaction-type-closing { color: hsl(215 14% 34%) !important; } /* Gray */
+.transaction-type-manual { color: hsl(271 81% 56%) !important; } /* Violet */
+.transaction-type-default { color: hsl(215 14% 34%) !important; } /* Gray */
+
+/* Dark mode transaction type colors */
+.dark-mode .transaction-type-purchase { color: hsl(217 91% 60%) !important; } /* Blue */
+.dark-mode .transaction-type-sale { color: hsl(142 76% 36%) !important; } /* Green */
+.dark-mode .transaction-type-expense { color: hsl(0 84% 60%) !important; } /* Red */
+.dark-mode .transaction-type-withdrawal { color: hsl(32 95% 44%) !important; } /* Orange */
+.dark-mode .transaction-type-investing { color: hsl(271 81% 56%) !important; } /* Purple */
+.dark-mode .transaction-type-deposit { color: hsl(252 95% 67%) !important; } /* Indigo */
+.dark-mode .transaction-type-gain { color: hsl(142 76% 36%) !important; } /* Green */
+.dark-mode .transaction-type-loss { color: hsl(0 84% 60%) !important; } /* Red */
+.dark-mode .transaction-type-payable { color: hsl(48 96% 53%) !important; } /* Yellow */
+.dark-mode .transaction-type-receivable { color: hsl(188 86% 53%) !important; } /* Cyan */
+.dark-mode .transaction-type-create { color: hsl(178 84% 41%) !important; } /* Teal */
+.dark-mode .transaction-type-closing { color: hsl(215 20% 65%) !important; } /* Gray */
+.dark-mode .transaction-type-manual { color: hsl(291 84% 61%) !important; } /* Violet */
+.dark-mode .transaction-type-default { color: hsl(215 20% 65%) !important; } /* Gray */
 
 /* Consistent highlighting for amounts */
 .transaction-amount {

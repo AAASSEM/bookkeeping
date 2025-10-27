@@ -2377,24 +2377,24 @@ export const Dashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-border text-primary">
                       {transactions.slice(-10).reverse().map((transaction) => {
-                        const getTypeColor = (type: string) => {
-                          const colors: Record<string, string> = {
-                            purchase: 'text-blue-600 dark:text-blue-400',
-                            sale: 'text-green-600 dark:text-green-400',
-                            expense: 'text-red-600 dark:text-red-400',
-                            withdrawal: 'text-orange-600 dark:text-orange-400',
-                            investing: 'text-purple-600 dark:text-purple-400',
-                            deposit: 'text-indigo-600 dark:text-indigo-400',
-                            gain: 'text-emerald-600 dark:text-emerald-400',
-                            loss: 'text-pink-600 dark:text-pink-400',
-                            payable: 'text-yellow-600 dark:text-yellow-400',
-                            receivable: 'text-cyan-600 dark:text-cyan-400',
-                            create: 'text-teal-600 dark:text-teal-400',
-                            closing: 'text-gray-600 dark:text-gray-400',
-                            manual: 'text-violet-600 dark:text-violet-400'
-                          };
-                          return colors[type] || 'text-gray-600 dark:text-gray-400';
-                        };
+                         const getTypeColor = (type: string) => {
+                           const colors: Record<string, string> = {
+                             purchase: 'transaction-type-purchase',
+                             sale: 'transaction-type-sale',
+                             expense: 'transaction-type-expense',
+                             withdrawal: 'transaction-type-withdrawal',
+                             investing: 'transaction-type-investing',
+                             deposit: 'transaction-type-deposit',
+                             gain: 'transaction-type-gain',
+                             loss: 'transaction-type-loss',
+                             payable: 'transaction-type-payable',
+                             receivable: 'transaction-type-receivable',
+                             create: 'transaction-type-create',
+                             closing: 'transaction-type-closing',
+                             manual: 'transaction-type-manual'
+                           };
+                           return colors[type] || 'transaction-type-default';
+                         };
 
                         const capitalizeFirst = (str: string) => {
                           return str.charAt(0).toUpperCase() + str.slice(1);
