@@ -700,8 +700,9 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
         <DialogHeader>
           <DialogTitle>{t('financialStatements')}</DialogTitle>
         </DialogHeader>
-        
-        <Tabs defaultValue="trial-balance" className="w-full">
+
+        <div className="overflow-x-auto custom-scrollbar">
+          <Tabs defaultValue="trial-balance" className="w-full min-w-[800px]">
           <TabsList>
             <TabsTrigger value="trial-balance">{t('trialBalance')}</TabsTrigger>
             <TabsTrigger value="income-statement">{t('incomeStatement')}</TabsTrigger>
@@ -754,7 +755,8 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             </div>
           </TabsContent>
         </Tabs>
-        
+        </div>
+
         <div className="flex justify-end mt-4">
           <Button onClick={onClose}>
             {t('close')}
