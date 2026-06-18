@@ -1,49 +1,8 @@
 import Dexie, { Table } from 'dexie';
+import type { Transaction, InventoryItem, Partner, AppSettings } from '@/types';
 
-// TypeScript interfaces for database tables
-export interface Transaction {
-  id: string;
-  date: string;
-  type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'create' | 'gain' | 'loss' | 'closing' | 'manual' | 'investing' | 'deposit' | 'payable' | 'receivable';
-  description: string;
-  amount: number;
-  debit: string;
-  credit: string;
-  paymentMethod?: 'cash' | 'credit' | 'other';
-  productName?: string;
-  partnerName?: string;
-  creditorName?: string;
-  debtorName?: string;
-  customerName?: string;
-  orderNumber?: string;
-  note?: string;
-}
-
-export interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  totalValue: number;
-  type: 'oil' | 'bottles' | 'box' | 'other' | 'created';
-  grams?: number;
-  milliliters?: number;
-  sellingPrice?: number;
-}
-
-export interface Partner {
-  id?: string;
-  name: string;
-  capital: number;
-}
-
-export interface AppSettings {
-  id?: string;
-  darkMode: boolean;
-  language: 'en' | 'ar';
-  cash: number;
-  totalSales: number;
-}
+// Re-export the shared domain types so existing importers of '@/db/database' keep working.
+export type { Transaction, InventoryItem, Partner, AppSettings };
 
 // Database class
 export class BusinessDatabase extends Dexie {

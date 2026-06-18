@@ -7,14 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useTranslation, type Language } from '@/utils/translations';
 import { FlaskConical, Droplets, Package, ShoppingCart, Banknote, CreditCard, Wallet, UserCircle } from 'lucide-react';
+import type { InventoryItem, Partner } from '@/types';
 
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
   type: 'purchase' | 'sale' | 'expense' | 'withdrawal' | 'gain' | 'loss' | 'deposit' | 'payable' | 'receivable';
-  inventory: any[];
-  partners: { name: string; capital: number }[];
+  inventory: InventoryItem[];
+  partners: Partner[];
   language: Language;
 }
 

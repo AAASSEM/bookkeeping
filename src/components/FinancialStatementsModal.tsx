@@ -1,28 +1,11 @@
-import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 import './financialStatementsScrollbar.css';
-import { Transaction } from '@/types';
+import type { Transaction, InventoryItem, Partner } from '@/types';
 import { useTranslation, type Language } from '@/utils/translations';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  totalValue: number;
-  type: 'bottles' | 'oil' | 'box' | 'other' | 'created';
-  milliliters?: number;
-  grams?: number;
-  sellingPrice?: number;
-}
-
-interface Partner {
-  name: string;
-  capital: number;
-}
+import { calculateIncomeStatement } from '@/lib/statements/financialCalculations';
 
 interface FinancialStatementsModalProps {
   isOpen: boolean;
@@ -37,20 +20,8 @@ interface FinancialStatementsModalProps {
 
 export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transactions, cash, partners, onClosingEntries, language }: FinancialStatementsModalProps) => {
   const { t } = useTranslation(language);
-  const totalRevenue = transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  const totalGains = transactions.filter(t => t.type === 'gain').reduce((sum, t) => sum + t.amount, 0);
-  const totalLosses = transactions.filter(t => t.type === 'loss').reduce((sum, t) => sum + t.amount, 0);
-  
-  // Calculate COGS for sold items
-  const totalCOGS = transactions
-    .filter(t => t.type === 'sale' && t.unitCost)
-    .reduce((sum, t) => sum + (t.unitCost! * (t.quantity || 1)), 0);
-
-  // Calculate net income once at the top level
-  const grossProfit = totalRevenue - totalCOGS;
+  const { totalRevenue, totalExpenses, totalGains, totalLosses, totalCOGS, grossProfit, netIncome } = calculateIncomeStatement(transactions);
   const totalprofitability = grossProfit + totalGains;
-  const netIncome = totalprofitability - totalExpenses - totalLosses;
 
   // Group inventory by type for detailed breakdown
   const inventoryByType = inventory.reduce((acc, item) => {
@@ -275,30 +246,28 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             <td className="text-right py-2 px-4">-</td>
           </tr>
           
-          {Object.entries(inventoryByType).map(([type, items]) => (
-            <React.Fragment key={type}>
-              <tr className="border-b bg-slate-50 dark:bg-slate-800">
-                <td className="py-2 pl-4 font-medium">
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+          {Object.entries(inventoryByType).map(([type, items]) => [
+            <tr key={type} className="border-b bg-slate-50 dark:bg-slate-800">
+              <td className="py-2 pl-4 font-medium">
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </td>
+              <td className="text-right py-2 px-4">
+                ${items.reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)}
+              </td>
+              <td className="text-right py-2 px-4">-</td>
+            </tr>,
+            ...items.map((item) => (
+              <tr key={item.id} className="border-b">
+                <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">
+                  {item.name}
                 </td>
-                <td className="text-right py-2 px-4">
-                  ${items.reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)}
+                <td className="text-right py-2 px-4 text-sm">
+                  ${item.totalValue.toFixed(2)}
                 </td>
                 <td className="text-right py-2 px-4">-</td>
               </tr>
-              {items.map((item) => (
-                <tr key={item.id} className="border-b">
-                  <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">
-                    {item.name}
-                  </td>
-                  <td className="text-right py-2 px-4 text-sm">
-                    ${item.totalValue.toFixed(2)}
-                  </td>
-                  <td className="text-right py-2 px-4">-</td>
-                </tr>
-              ))}
-            </React.Fragment>
-          ))}
+            )),
+          ])}
           
           <tr className="border-b">
             <td className="py-2 px-4">{t('grossProfit')}</td>
@@ -348,22 +317,20 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             const totalAccountsReceivable = Object.values(accountsReceivableMap).reduce((sum, val) => sum + val, 0);
 
             if (totalAccountsReceivable > 0) {
-              return (
-                <React.Fragment>
-                  <tr className="border-b font-semibold">
-                    <td className="py-2 px-4">{t('accountsReceivable')}</td>
-                    <td className="text-right py-2 px-4">${totalAccountsReceivable.toFixed(2)}</td>
+              return [
+                <tr key="ar-header" className="border-b font-semibold">
+                  <td className="py-2 px-4">{t('accountsReceivable')}</td>
+                  <td className="text-right py-2 px-4">${totalAccountsReceivable.toFixed(2)}</td>
+                  <td className="text-right py-2 px-4">-</td>
+                </tr>,
+                ...Object.entries(accountsReceivableMap).map(([debtor, amount]) => (
+                  <tr key={debtor} className="border-b">
+                    <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{debtor}</td>
+                    <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
                     <td className="text-right py-2 px-4">-</td>
                   </tr>
-                  {Object.entries(accountsReceivableMap).map(([debtor, amount]) => (
-                    <tr key={debtor} className="border-b">
-                      <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{debtor}</td>
-                      <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
-                      <td className="text-right py-2 px-4">-</td>
-                    </tr>
-                  ))}
-                </React.Fragment>
-              );
+                )),
+              ];
             }
             return null;
           })()}
@@ -384,22 +351,20 @@ export const FinancialStatementsModal = ({ isOpen, onClose, inventory, transacti
             const totalAccountsPayable = Object.values(accountsPayableMap).reduce((sum, val) => sum + val, 0);
 
             if (totalAccountsPayable > 0) {
-              return (
-                <React.Fragment>
-                  <tr className="border-b font-semibold">
-                    <td className="py-2 px-4">{t('accountsPayable')}</td>
+              return [
+                <tr key="ap-header" className="border-b font-semibold">
+                  <td className="py-2 px-4">{t('accountsPayable')}</td>
+                  <td className="text-right py-2 px-4">-</td>
+                  <td className="text-right py-2 px-4">${totalAccountsPayable.toFixed(2)}</td>
+                </tr>,
+                ...Object.entries(accountsPayableMap).map(([creditor, amount]) => (
+                  <tr key={creditor} className="border-b">
+                    <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{creditor}</td>
                     <td className="text-right py-2 px-4">-</td>
-                    <td className="text-right py-2 px-4">${totalAccountsPayable.toFixed(2)}</td>
+                    <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
                   </tr>
-                  {Object.entries(accountsPayableMap).map(([creditor, amount]) => (
-                    <tr key={creditor} className="border-b">
-                      <td className="py-2 pl-8 text-sm text-slate-600 dark:text-slate-400">{creditor}</td>
-                      <td className="text-right py-2 px-4">-</td>
-                      <td className="text-right py-2 px-4 text-sm">${amount.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </React.Fragment>
-              );
+                )),
+              ];
             }
             return null;
           })()}

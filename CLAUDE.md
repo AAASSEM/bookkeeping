@@ -75,23 +75,44 @@ src/
 ## Development Environment
 
 - **Port**: Development server runs on port 3003
-- **Node.js**: v18.20.8+
 - **Package Manager**: npm
-- **Hot Module Replacement**: Enabled via Vite
-- **TypeScript**: Configured with relaxed strictness for development speed
+- **Hot Module Replacement**: Enabled via Vite with SWC
 
-## Key Business Logic
+## Architecture Patterns
 
-### Financial Calculations
-- **COGS**: Cost of Goods Sold calculations from inventory
-- **Cash Balance**: Real-time updates from transactions
-- **Profit Margins**: Per-product profitability tracking
-- **Partner Splits**: Capital contribution and profit distribution
+### Data Flow Pattern
+All data operations follow this pattern:
+1. **UI Component** calls a function from `useDatabase()` hook
+2. **Hook function** updates local React state (optimistic update)
+3. **Hook function** calls corresponding `dbService` method
+4. **dbService** performs IndexedDB operation via Dexie
+5. **UI re-renders** with new state automatically
 
-### Data Persistence
-- **Client-side Only**: No backend server required
-- **Offline Capable**: Full functionality without internet
-- **Data Migration**: Seamless upgrade from localStorage to IndexedDB
+### Key Transaction Types
+- **Revenue**: `sale`, `gain`
+- **Expenses**: `purchase`, `expense`, `loss`
+- **Capital/Financing**: `investing`, `create`, `deposit`, `withdrawal`
+- **Receivables/Payables**: `payable`, `receivable`
+- **Adjustments**: `manual`, `closing`
+
+### Critical Data Relationships
+- Transactions are tied to partners via `partnerName` (not foreign key)
+- Inventory items can be linked to transactions via `productName`
+- Cash balance stored in AppSettings, updated transactionally
+- TotalSales tracked separately in AppSettings for performance
+
+## Development Workflow
+
+### Adding New Features
+1. **Database Layer**: Add/update interfaces in `src/db/database.ts` if new models needed
+2. **Service Layer**: Add CRUD operations to `dbService` object in database.ts
+3. **Hook Layer**: Expose new operations through `useDatabase()` hook
+4. **UI Layer**: Use existing shadcn/ui components for consistency
+
+### Form Development
+- Use React Hook Form with Zod validation schemas
+- Follow existing form patterns in Dashboard component
+- Leverage existing shadcn/ui form components (input, select, button, etc.)
 
 ## Special Considerations
 
@@ -99,15 +120,7 @@ src/
 - **Component Tagger**: `lovable-tagger` for cloud development sync
 - **Project URL**: https://lovable.dev/projects/1be17daa-c242-4ce4-afbd-4b4badfff3f0
 - **Auto-commit**: Changes made via Lovable are committed automatically
-
-### Form Validation
-- **Zod Schemas**: All forms use Zod for validation
-- **Type Safety**: Full TypeScript integration with database models
-
-### UI Components
-- **shadcn/ui**: Consistent design system
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Theming**: CSS custom properties for dark/light mode
+- **Sync Direction**: Local git pushes → Lovable, Lovable edits → git commits
 
 When working with this codebase:
 - All data operations should go through the `useDatabase()` hook

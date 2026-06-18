@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useTranslation, type Language } from '@/utils/translations';
 import { formatDate } from '@/utils/dateFormatter';
+import type { Partner } from '@/types';
 
 interface ManualTransactionModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ interface ManualTransactionModalProps {
   totalCOGS: number;
   totalLosses: number;
   totalGains: number;
-  partners: { name: string; capital: number; }[];
+  partners: Partner[];
   language: Language;
 }
 
